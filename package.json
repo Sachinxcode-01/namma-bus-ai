@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "NammaBus AI - Smart student bus tracking, arrival prediction, and safety alerts",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "npm --prefix apps/api run start:dev",
     "build": "npm --prefix apps/api run build",
@@ -15,6 +11,7 @@
     "test:e2e": "npm --prefix apps/api run test:e2e",
     "lint": "npm --prefix apps/api run lint",
     "format": "npm --prefix apps/api run format",
+    "format:check": "npm --prefix apps/api run format:check",
     "typecheck": "npm --prefix apps/api run typecheck",
     "prisma:generate": "npm --prefix apps/api run prisma:generate",
     "prisma:migrate": "npm --prefix apps/api run prisma:migrate",

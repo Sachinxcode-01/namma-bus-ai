@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { User, Student, Driver, RefreshToken, UserRole } from '@prisma/client';
+import { User, Student, Driver, RefreshToken, UserRole, Prisma } from '@prisma/client';
 
 export type UserWithProfile = User & {
   student: Student | null;
@@ -38,7 +38,7 @@ export class AuthRepository {
     usn: string;
     phone?: string;
   }): Promise<UserWithProfile> {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: {
           email: params.email.toLowerCase().trim(),
@@ -69,7 +69,7 @@ export class AuthRepository {
     licenseNumber: string;
     phone: string;
   }): Promise<UserWithProfile> {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: {
           email: params.email.toLowerCase().trim(),

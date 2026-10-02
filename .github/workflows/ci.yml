@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master, develop, prem]
   pull_request:
-    branches: [main, master, develop]
+    branches: [main, master, develop, prem]
 
 jobs:
   validate:
@@ -43,7 +43,7 @@ jobs:
         run: npm run prisma:generate
 
       - name: Check Code Formatting
-        run: npm run format -- --check
+        run: npm run format:check
 
       - name: Run Linter
         run: npm run lint
