@@ -59,3 +59,19 @@ Root endpoints:
 | `CONFLICT` | 409 | Unique constraint violation or state conflict |
 | `SERVICE_UNAVAILABLE`| 503 | Database or downstream critical service down |
 | `INTERNAL_SERVER_ERROR`| 500 | Unhandled server exception (details masked) |
+
+## Phase 1 Endpoints
+
+### Authentication (`/api/v1/auth`)
+- `POST /api/v1/auth/register/student` — Register student account (`email`, `password`, `name`, `usn`, optional `phone`).
+- `POST /api/v1/auth/register/driver` — Register driver account (`email`, `password`, `name`, `licenseNumber`, `phone`).
+- `POST /api/v1/auth/login` — Authenticate with `email` and `password`. Returns `{ accessToken, refreshToken, expiresIn, user }`.
+- `POST /api/v1/auth/refresh` — Rotate single-use refresh token and receive a new token pair.
+- `POST /api/v1/auth/logout` — Revoke active refresh token.
+- `GET /api/v1/auth/me` — Retrieve authenticated user profile with role context (`STUDENT`, `DRIVER`, `ADMIN`).
+
+### User Management (`/api/v1/users`)
+- `GET /api/v1/users` — List users with pagination and search (`page`, `limit`, `role`, `search`). **Admin only**.
+- `GET /api/v1/users/:id` — Retrieve user profile by ID. **Admin or account owner**.
+- `PATCH /api/v1/users/:id/status` — Activate/deactivate account (`isActive: boolean`). **Admin only**.
+
