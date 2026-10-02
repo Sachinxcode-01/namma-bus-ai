@@ -4,6 +4,8 @@ import { validateEnv, appConfig, databaseConfig, authConfig } from './config';
 import { LoggingModule } from './logging/logging.module';
 import { PrismaModule } from './database/prisma.module';
 import { HealthModule } from './modules/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -16,6 +18,8 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     LoggingModule,
     PrismaModule,
     HealthModule,
+    AuthModule,
+    UsersModule,
   ],
 })
 export class AppModule implements NestModule {
