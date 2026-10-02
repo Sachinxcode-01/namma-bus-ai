@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { User, Student, Driver, RefreshToken, UserRole, Prisma } from '@prisma/client';
+import type { User, Student, Driver, RefreshToken } from '@prisma/client';
+import { UserRole, Prisma } from '@prisma/client';
 
 export type UserWithProfile = User & {
   student: Student | null;
