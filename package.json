@@ -1,0 +1,28 @@
+{
+  "name": "namma-bus-ai-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NammaBus AI - Smart student bus tracking, arrival prediction, and safety alerts",
+  "scripts": {
+    "dev": "npm --prefix apps/api run start:dev",
+    "build": "npm --prefix apps/api run build",
+    "start": "npm --prefix apps/api run start:prod",
+    "test": "npm --prefix apps/api run test",
+    "test:e2e": "npm --prefix apps/api run test:e2e",
+    "lint": "npm --prefix apps/api run lint",
+    "format": "npm --prefix apps/api run format",
+    "typecheck": "npm --prefix apps/api run typecheck",
+    "prisma:generate": "npm --prefix apps/api run prisma:generate",
+    "prisma:migrate": "npm --prefix apps/api run prisma:migrate",
+    "prisma:seed": "npm --prefix apps/api run prisma:seed"
+  },
+  "keywords": [
+    "nammabus",
+    "nestjs",
+    "typescript",
+    "prisma",
+    "transport"
+  ],
+  "author": "NammaBus AI Team",
+  "license": "UNLICENSED"
+}
