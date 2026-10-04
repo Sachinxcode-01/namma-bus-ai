@@ -138,8 +138,8 @@ export class SubscriptionsService {
       );
     }
 
-    await this.subscriptionsRepository.delete(id);
-    this.logger.log(`Subscription deleted: ID=${id}`);
+    await this.subscriptionsRepository.deactivate(id);
+    this.logger.log(`Subscription deactivated: ID=${id}`);
     return { deleted: true, id };
   }
 }

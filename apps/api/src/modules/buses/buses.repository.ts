@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Bus, Prisma, TripStatus } from '@prisma/client';
+import { ConflictException } from '../../common/errors/app.exception';
 
 export type BusWithStatus = Bus & {
   activeTrip?: {
@@ -107,14 +108,23 @@ export class BusesRepository {
     capacity: number;
     isActive?: boolean;
   }): Promise<Bus> {
-    return this.prisma.bus.create({
-      data: {
-        busNumber: data.busNumber.trim(),
-        registrationNumber: data.registrationNumber.trim().toUpperCase(),
-        capacity: data.capacity,
-        isActive: data.isActive ?? true,
-      },
-    });
+    try {
+      return await this.prisma.bus.create({
+        data: {
+          busNumber: data.busNumber.trim(),
+          registrationNumber: data.registrationNumber.trim().toUpperCase(),
+          capacity: data.capacity,
+          isActive: data.isActive ?? true,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(
+          'Bus with specified bus number or registration number already exists.',
+        );
+      }
+      throw error;
+    }
   }
 
   async update(
@@ -134,10 +144,19 @@ export class BusesRepository {
     if (data.capacity !== undefined) updateData.capacity = data.capacity;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
-    return this.prisma.bus.update({
-      where: { id },
-      data: updateData,
-    });
+    try {
+      return await this.prisma.bus.update({
+        where: { id },
+        data: updateData,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(
+          'Bus with specified bus number or registration number already exists.',
+        );
+      }
+      throw error;
+    }
   }
 
   async countTrips(id: string): Promise<number> {
@@ -147,8 +166,17 @@ export class BusesRepository {
   }
 
   async delete(id: string): Promise<Bus> {
-    return this.prisma.bus.delete({
-      where: { id },
-    });
+    try {
+      return await this.prisma.bus.delete({
+        where: { id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException(
+          'Cannot delete bus due to associated database foreign key records.',
+        );
+      }
+      throw error;
+    }
   }
 }
