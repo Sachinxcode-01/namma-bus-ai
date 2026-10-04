@@ -131,3 +131,25 @@ Root endpoints:
 - `POST /api/v1/subscriptions` — Subscribe student to a specific stop on a route (`routeId`, `stopId`). Validates that stop belongs to the route.
 - `GET /api/v1/subscriptions` — List subscriptions (Students view theirs; Admins can filter by `studentId`, `routeId`, `stopId`).
 - `DELETE /api/v1/subscriptions/:id` — Cancel/remove subscription. **Admin or student owner**.
+
+## Phase 3 Endpoints (Trips, GPS Ingestion & Realtime Tracking)
+
+### Operational Bus Trips (`/api/v1/trips`)
+
+- `POST /api/v1/trips` — Schedule a new bus trip (`busId`, `driverId`, `routeId`, optional `scheduledStartTime`). Validates bus/driver/route availability and prevents concurrent active conflicts. **Admin only**.
+- `GET /api/v1/trips` — List trips with pagination and filtering (`status`, `busId`, `driverId`, `routeId`, `date`, `search`). **Authenticated**.
+- `GET /api/v1/trips/active` — List all currently active bus trips across the fleet. **Authenticated**.
+- `GET /api/v1/trips/:id` — Get detailed trip info by ID, including assigned bus, driver, sequenced route stops, and stop events. **Authenticated**.
+- `PATCH /api/v1/trips/:id/start` — Start scheduled trip (`actualStartTime` recorded, status set to `ACTIVE`). Idempotent if already active. **Assigned driver or Admin**.
+- `PATCH /api/v1/trips/:id/end` — End active trip (`actualEndTime` recorded, status set to `COMPLETED`). Idempotent if already completed. **Assigned driver or Admin**.
+- `PATCH /api/v1/trips/:id/cancel` — Cancel trip. Rejects cancellation of completed trips. **Assigned driver or Admin**.
+- `GET /api/v1/trips/:id/stops` — Get ordered stops along the trip route with recorded arrival/departure event timestamps. **Authenticated**.
+- `POST /api/v1/trips/:id/stops/:stopId/events` — Record a stop arrival or departure event (`eventType`: `ARRIVED` | `DEPARTED`, optional `timestamp`). Idempotent. **Assigned driver or Admin**.
+
+### High-Frequency GPS & Realtime Telemetry (`/api/v1/locations`)
+
+- `POST /api/v1/locations/ingest` — Ingest vehicle GPS ping (`tripId`, `latitude`, `longitude`, optional `speed`, `heading`, `accuracy`, `timestamp`). Strict validation on bounds, clock skew, speed limits, and teleportation jumps. **Assigned driver or Admin**.
+- `GET /api/v1/locations/trips/:tripId/latest` — Fetch the most recent live location for an active trip. **Authenticated**.
+- `GET /api/v1/locations/buses/:busId/latest` — Fetch the most recent live location for a fleet vehicle. **Authenticated**.
+- `GET /api/v1/locations/trips/:tripId/history` — Fetch historical GPS breadcrumbs for a trip (`limit`, `since`). **Authenticated**.
+- `GET /api/v1/locations/trips/:tripId/stream` — **Server-Sent Events (SSE)** real-time live location stream for continuous map updates without polling. **Authenticated**.

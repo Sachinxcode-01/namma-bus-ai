@@ -1,0 +1,375 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { LocationsService } from './locations.service';
+import { LocationsRepository } from './locations.repository';
+import { TripsRepository, TripDetail } from '../trips/trips.repository';
+import { LocationStreamService } from './location-stream.service';
+import { LiveLocation, TripStatus, UserRole } from '@prisma/client';
+import {
+  AppException,
+  ForbiddenException,
+  NotFoundException,
+  ValidationException,
+} from '../../common/errors/app.exception';
+import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+
+describe('LocationsService', () => {
+  let service: LocationsService;
+  let locationsRepo: jest.Mocked<LocationsRepository>;
+  let tripsRepo: jest.Mocked<TripsRepository>;
+  let streamService: jest.Mocked<LocationStreamService>;
+
+  const mockAdminUser: AuthenticatedUser = {
+    id: 'admin-user-id',
+    email: 'admin@nammabus.internal',
+    role: UserRole.ADMIN,
+    isActive: true,
+  };
+
+  const mockDriverUser: AuthenticatedUser = {
+    id: 'driver-user-id',
+    email: 'driver@nammabus.internal',
+    role: UserRole.DRIVER,
+    isActive: true,
+    driverId: 'driver-id-1',
+  };
+
+  const mockOtherDriverUser: AuthenticatedUser = {
+    id: 'other-driver-user-id',
+    email: 'otherdriver@nammabus.internal',
+    role: UserRole.DRIVER,
+    isActive: true,
+    driverId: 'driver-id-2',
+  };
+
+  const mockTrip: TripDetail = {
+    id: 'trip-id-1',
+    busId: 'bus-id-1',
+    driverId: 'driver-id-1',
+    routeId: 'route-id-1',
+    status: TripStatus.ACTIVE,
+    scheduledStartTime: new Date(),
+    actualStartTime: new Date(),
+    actualEndTime: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    bus: {
+      id: 'bus-id-1',
+      busNumber: 'KA-01-F-1001',
+      registrationNumber: 'KA01F1001',
+      capacity: 40,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    driver: {
+      id: 'driver-id-1',
+      userId: 'driver-user-id',
+      licenseNumber: 'KA0120200001234',
+      name: 'Suresh Kumar',
+      phone: '+919876543210',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      user: { id: 'driver-user-id', email: 'driver@nammabus.internal', isActive: true },
+    },
+    route: {
+      id: 'route-id-1',
+      name: 'Hebbal to Majestic',
+      code: 'R-01',
+      description: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      routeStops: [],
+    },
+    stopEvents: [],
+    lastKnownLocation: null,
+  };
+
+  const mockLocation: LiveLocation = {
+    id: 'loc-1',
+    busId: 'bus-id-1',
+    tripId: 'trip-id-1',
+    latitude: 12.9716,
+    longitude: 77.5946,
+    speed: 30,
+    heading: 90,
+    accuracy: 5,
+    timestamp: new Date(),
+    createdAt: new Date(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        LocationsService,
+        {
+          provide: LocationsRepository,
+          useValue: {
+            create: jest.fn(),
+            findLatestByTripId: jest.fn(),
+            findLatestByBusId: jest.fn(),
+            findHistoryByTripId: jest.fn(),
+          },
+        },
+        {
+          provide: TripsRepository,
+          useValue: {
+            findById: jest.fn(),
+          },
+        },
+        {
+          provide: LocationStreamService,
+          useValue: {
+            emitLocation: jest.fn(),
+            getTripStream: jest.fn(),
+            getFleetStream: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<LocationsService>(LocationsService);
+    locationsRepo = module.get(LocationsRepository);
+    tripsRepo = module.get(TripsRepository);
+    streamService = module.get(LocationStreamService);
+  });
+
+  describe('ingest', () => {
+    it('should ingest and broadcast location successfully for active trip by assigned driver', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(null);
+      locationsRepo.create.mockResolvedValue(mockLocation);
+
+      const result = await service.ingest(
+        {
+          tripId: 'trip-id-1',
+          latitude: 12.9716,
+          longitude: 77.5946,
+          speed: 30,
+          heading: 90,
+          accuracy: 5,
+          timestamp: new Date().toISOString(),
+        },
+        mockDriverUser,
+      );
+
+      expect(result).toEqual(mockLocation);
+      expect(locationsRepo.create).toHaveBeenCalled();
+      expect(streamService.emitLocation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: mockLocation.id,
+          busNumber: 'KA-01-F-1001',
+          routeCode: 'R-01',
+        }),
+      );
+    });
+
+    it('should throw ValidationException if latitude is out of bounds', async () => {
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 95.0,
+            longitude: 77.5946,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+
+    it('should throw ValidationException if accuracy is negative', async () => {
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            accuracy: -5,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+
+    it('should throw ValidationException if speed exceeds 120 km/h', async () => {
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            speed: 135,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+
+    it('should throw ValidationException if timestamp is in the future (> 60s)', async () => {
+      const futureTime = new Date(Date.now() + 120_000).toISOString();
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: futureTime,
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+
+    it('should throw ValidationException if timestamp is too stale (> 10m)', async () => {
+      const staleTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: staleTime,
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+
+    it('should throw NotFoundException if trip is not found', async () => {
+      tripsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.ingest(
+          {
+            tripId: 'non-existent-trip',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw AppException if trip is not ACTIVE (e.g. SCHEDULED)', async () => {
+      tripsRepo.findById.mockResolvedValue({ ...mockTrip, status: TripStatus.SCHEDULED });
+
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(AppException);
+    });
+
+    it('should throw ForbiddenException if another driver attempts to ingest GPS', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: new Date().toISOString(),
+          },
+          mockOtherDriverUser,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should allow Admin to ingest GPS', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(null);
+      locationsRepo.create.mockResolvedValue(mockLocation);
+
+      const result = await service.ingest(
+        {
+          tripId: 'trip-id-1',
+          latitude: 12.9716,
+          longitude: 77.5946,
+          timestamp: new Date().toISOString(),
+        },
+        mockAdminUser,
+      );
+
+      expect(result).toBeDefined();
+    });
+
+    it('should detect and reject teleportation jump (> 160 km/h within 120s)', async () => {
+      const prevTime = new Date(Date.now() - 10_000); // 10 seconds ago
+      const prevLoc: LiveLocation = {
+        ...mockLocation,
+        latitude: 12.9716,
+        longitude: 77.5946,
+        timestamp: prevTime,
+      };
+
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(prevLoc);
+
+      // Point ~5 km away in 10 seconds = ~1800 km/h (impossible jump)
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 13.015,
+            longitude: 77.625,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+  });
+
+  describe('getLatestByTripId', () => {
+    it('should return latest location when trip exists', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(mockLocation);
+
+      const result = await service.getLatestByTripId('trip-id-1');
+      expect(result).toEqual(mockLocation);
+    });
+
+    it('should throw NotFoundException when no location found', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(null);
+
+      await expect(service.getLatestByTripId('trip-id-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getLatestByBusId', () => {
+    it('should return latest location for bus', async () => {
+      locationsRepo.findLatestByBusId.mockResolvedValue(mockLocation);
+
+      const result = await service.getLatestByBusId('bus-id-1');
+      expect(result).toEqual(mockLocation);
+    });
+
+    it('should throw NotFoundException when no bus location found', async () => {
+      locationsRepo.findLatestByBusId.mockResolvedValue(null);
+
+      await expect(service.getLatestByBusId('bus-id-1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getHistoryByTripId', () => {
+    it('should return history array', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findHistoryByTripId.mockResolvedValue([mockLocation]);
+
+      const result = await service.getHistoryByTripId('trip-id-1', { limit: 50 });
+      expect(result).toHaveLength(1);
+    });
+  });
+});
