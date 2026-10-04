@@ -201,6 +201,7 @@ describe('TripsService', () => {
             findActiveByBus: jest.fn(),
             findActiveByDriver: jest.fn(),
             update: jest.fn(),
+            startTripAtomic: jest.fn(),
             findStopEvent: jest.fn(),
             createStopEvent: jest.fn(),
             findTripStopsProgress: jest.fn(),
@@ -376,9 +377,7 @@ describe('TripsService', () => {
   describe('startTrip', () => {
     it('should start a scheduled trip when invoked by assigned driver', async () => {
       tripsRepo.findById.mockResolvedValue({ ...mockTripDetail, status: TripStatus.SCHEDULED });
-      tripsRepo.findActiveByBus.mockResolvedValue(null);
-      tripsRepo.findActiveByDriver.mockResolvedValue(null);
-      tripsRepo.update.mockResolvedValue({
+      tripsRepo.startTripAtomic.mockResolvedValue({
         ...mockTripDetail,
         status: TripStatus.ACTIVE,
         actualStartTime: new Date(),
@@ -386,10 +385,12 @@ describe('TripsService', () => {
 
       const result = await service.startTrip('trip-id-1', mockDriverUser);
       expect(result.status).toBe(TripStatus.ACTIVE);
-      expect(tripsRepo.update).toHaveBeenCalledWith('trip-id-1', {
-        status: TripStatus.ACTIVE,
-        actualStartTime: expect.any(Date),
-      });
+      expect(tripsRepo.startTripAtomic).toHaveBeenCalledWith(
+        'trip-id-1',
+        'bus-id-1',
+        'driver-id-1',
+        expect.any(Date),
+      );
     });
 
     it('should return existing trip idempotently if trip is already ACTIVE', async () => {
@@ -402,7 +403,7 @@ describe('TripsService', () => {
 
       const result = await service.startTrip('trip-id-1', mockDriverUser);
       expect(result.status).toBe(TripStatus.ACTIVE);
-      expect(tripsRepo.update).not.toHaveBeenCalled();
+      expect(tripsRepo.startTripAtomic).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenException if another driver attempts to start the trip', async () => {
@@ -415,9 +416,7 @@ describe('TripsService', () => {
 
     it('should allow admin to start the trip', async () => {
       tripsRepo.findById.mockResolvedValue({ ...mockTripDetail, status: TripStatus.SCHEDULED });
-      tripsRepo.findActiveByBus.mockResolvedValue(null);
-      tripsRepo.findActiveByDriver.mockResolvedValue(null);
-      tripsRepo.update.mockResolvedValue({
+      tripsRepo.startTripAtomic.mockResolvedValue({
         ...mockTripDetail,
         status: TripStatus.ACTIVE,
         actualStartTime: new Date(),
@@ -425,6 +424,12 @@ describe('TripsService', () => {
 
       const result = await service.startTrip('trip-id-1', mockAdminUser);
       expect(result.status).toBe(TripStatus.ACTIVE);
+      expect(tripsRepo.startTripAtomic).toHaveBeenCalledWith(
+        'trip-id-1',
+        'bus-id-1',
+        'driver-id-1',
+        expect.any(Date),
+      );
     });
 
     it('should throw AppException on invalid state transition (e.g. COMPLETED)', async () => {

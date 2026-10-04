@@ -51,10 +51,12 @@ export class LocationsRepository {
       where.timestamp = { gte: since };
     }
 
-    return this.prisma.liveLocation.findMany({
+    const records = await this.prisma.liveLocation.findMany({
       where,
-      orderBy: { timestamp: 'asc' },
+      orderBy: { timestamp: 'desc' },
       take: limit,
     });
+
+    return records.reverse();
   }
 }

@@ -157,30 +157,10 @@ export class TripsService {
       );
     }
 
-    // Verify bus and driver do not have another active trip concurrently
-    const [busActiveTrip, driverActiveTrip] = await Promise.all([
-      this.tripsRepository.findActiveByBus(trip.busId),
-      this.tripsRepository.findActiveByDriver(trip.driverId),
-    ]);
-
-    if (busActiveTrip && busActiveTrip.id !== trip.id) {
-      throw new ConflictException(
-        `Bus is currently operating another active trip (${busActiveTrip.id}).`,
-      );
-    }
-    if (driverActiveTrip && driverActiveTrip.id !== trip.id) {
-      throw new ConflictException(
-        `Driver is currently operating another active trip (${driverActiveTrip.id}).`,
-      );
-    }
-
     const now = new Date();
     this.logger.log(`Starting trip ${id} at ${now.toISOString()}`);
 
-    return this.tripsRepository.update(id, {
-      status: TripStatus.ACTIVE,
-      actualStartTime: now,
-    });
+    return this.tripsRepository.startTripAtomic(id, trip.busId, trip.driverId, now);
   }
 
   async endTrip(id: string, currentUser: AuthenticatedUser): Promise<TripDetail> {

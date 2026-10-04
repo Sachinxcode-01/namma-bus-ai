@@ -91,7 +91,13 @@ export class LocationsService {
     const latestLocation = await this.locationsRepository.findLatestByTripId(dto.tripId);
     if (latestLocation) {
       const elapsedSeconds = (pingTime.getTime() - latestLocation.timestamp.getTime()) / 1000;
-      if (elapsedSeconds > 0 && elapsedSeconds < 120) {
+      if (elapsedSeconds <= 0) {
+        throw new ValidationException(
+          'GPS ping timestamp must be newer than the latest recorded location for this trip.',
+        );
+      }
+
+      if (elapsedSeconds < 120) {
         const distanceMeters = haversineDistance(
           latestLocation.latitude,
           latestLocation.longitude,

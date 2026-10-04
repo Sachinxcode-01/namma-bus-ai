@@ -329,6 +329,44 @@ describe('LocationsService', () => {
         ),
       ).rejects.toThrow(ValidationException);
     });
+
+    it('should reject ping if timestamp is equal to or older than latest location', async () => {
+      const recordedTime = new Date();
+      const prevLoc: LiveLocation = {
+        ...mockLocation,
+        timestamp: recordedTime,
+      };
+
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(prevLoc);
+
+      // Same timestamp
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: recordedTime.toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+
+      // Older timestamp (5 seconds before latest)
+      const olderTime = new Date(recordedTime.getTime() - 5000).toISOString();
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: olderTime,
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
   });
 
   describe('getLatestByTripId', () => {

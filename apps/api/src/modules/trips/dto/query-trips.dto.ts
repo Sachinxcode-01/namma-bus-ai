@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TripStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsUUID, Matches } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsUUID, Matches } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
 export class QueryTripsDto extends PaginationQueryDto {
@@ -42,5 +42,6 @@ export class QueryTripsDto extends PaginationQueryDto {
   })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be in YYYY-MM-DD format' })
+  @IsDateString({ strict: true }, { message: 'date must be a valid ISO 8601 calendar date' })
   date?: string;
 }

@@ -31,6 +31,9 @@ export class CreateTripDto {
     description: 'Optional scheduled start time in ISO 8601 format',
   })
   @IsOptional()
-  @IsDateString({}, { message: 'scheduledStartTime must be a valid ISO 8601 date string' })
+  @IsDateString(
+    { strict: true },
+    { message: 'scheduledStartTime must be a valid ISO 8601 date string' },
+  )
   scheduledStartTime?: string;
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import {
   Bus,
@@ -14,7 +14,11 @@ import {
   TripStatus,
   User,
 } from '@prisma/client';
-import { ConflictException } from '../../common/errors/app.exception';
+import {
+  AppException,
+  ConflictException,
+  NotFoundException,
+} from '../../common/errors/app.exception';
 
 export type TripSummary = Trip & {
   bus: Bus;
@@ -112,33 +116,43 @@ export class TripsRepository {
     if (params.routeId) {
       where.routeId = params.routeId;
     }
+    const andClauses: Prisma.TripWhereInput[] = [];
+
     if (params.date) {
       const startOfDay = new Date(`${params.date}T00:00:00.000Z`);
       const endOfDay = new Date(`${params.date}T23:59:59.999Z`);
-      where.OR = [
-        {
-          scheduledStartTime: {
-            gte: startOfDay,
-            lte: endOfDay,
+      andClauses.push({
+        OR: [
+          {
+            scheduledStartTime: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
           },
-        },
-        {
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
+          {
+            createdAt: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
           },
-        },
-      ];
+        ],
+      });
     }
     if (params.search) {
       const s = params.search.trim();
-      where.OR = [
-        { bus: { busNumber: { contains: s, mode: 'insensitive' } } },
-        { bus: { registrationNumber: { contains: s, mode: 'insensitive' } } },
-        { driver: { name: { contains: s, mode: 'insensitive' } } },
-        { route: { name: { contains: s, mode: 'insensitive' } } },
-        { route: { code: { contains: s, mode: 'insensitive' } } },
-      ];
+      andClauses.push({
+        OR: [
+          { bus: { busNumber: { contains: s, mode: 'insensitive' } } },
+          { bus: { registrationNumber: { contains: s, mode: 'insensitive' } } },
+          { driver: { name: { contains: s, mode: 'insensitive' } } },
+          { route: { name: { contains: s, mode: 'insensitive' } } },
+          { route: { code: { contains: s, mode: 'insensitive' } } },
+        ],
+      });
+    }
+
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
     }
 
     const [tripsRaw, total] = await Promise.all([
@@ -251,6 +265,91 @@ export class TripsRepository {
       throw new Error(`Trip with id ${id} could not be retrieved after update`);
     }
     return updated;
+  }
+
+  async startTripAtomic(
+    id: string,
+    busId: string,
+    driverId: string,
+    startTime: Date,
+  ): Promise<TripDetail> {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const trip = await tx.trip.findUnique({
+          where: { id },
+        });
+
+        if (!trip) {
+          throw new NotFoundException('Trip', id);
+        }
+
+        // Idempotency: if already ACTIVE, return existing state without overwriting actualStartTime
+        if (trip.status === TripStatus.ACTIVE) {
+          const detail = await this.findById(id);
+          if (!detail) {
+            throw new NotFoundException('Trip', id);
+          }
+          return detail;
+        }
+
+        if (trip.status !== TripStatus.SCHEDULED) {
+          throw new AppException(
+            'INVALID_STATE_TRANSITION',
+            `Cannot start trip with status '${trip.status}'. Only SCHEDULED trips can be started.`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const [busActiveTrip, driverActiveTrip] = await Promise.all([
+          tx.trip.findFirst({
+            where: { busId, status: TripStatus.ACTIVE, id: { not: id } },
+          }),
+          tx.trip.findFirst({
+            where: { driverId, status: TripStatus.ACTIVE, id: { not: id } },
+          }),
+        ]);
+
+        if (busActiveTrip) {
+          throw new ConflictException(
+            `Bus is currently operating another active trip (${busActiveTrip.id}).`,
+          );
+        }
+
+        if (driverActiveTrip) {
+          throw new ConflictException(
+            `Driver is currently operating another active trip (${driverActiveTrip.id}).`,
+          );
+        }
+
+        // Conditional atomic update: only transitions if status is still SCHEDULED
+        const updateResult = await tx.trip.updateMany({
+          where: { id, status: TripStatus.SCHEDULED },
+          data: {
+            status: TripStatus.ACTIVE,
+            actualStartTime: startTime,
+          },
+        });
+
+        if (updateResult.count === 0) {
+          const rechecked = await tx.trip.findUnique({ where: { id } });
+          if (rechecked && rechecked.status === TripStatus.ACTIVE) {
+            const detail = await this.findById(id);
+            if (!detail) {
+              throw new NotFoundException('Trip', id);
+            }
+            return detail;
+          }
+          throw new ConflictException('Trip state was changed concurrently. Please retry.');
+        }
+
+        const updated = await this.findById(id);
+        if (!updated) {
+          throw new NotFoundException('Trip', id);
+        }
+        return updated;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async findStopEvent(

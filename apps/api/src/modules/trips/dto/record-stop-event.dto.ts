@@ -17,6 +17,6 @@ export class RecordStopEventDto {
     description: 'Timestamp when event occurred (defaults to current time if omitted)',
   })
   @IsOptional()
-  @IsDateString({}, { message: 'timestamp must be a valid ISO 8601 date string' })
+  @IsDateString({ strict: true }, { message: 'timestamp must be a valid ISO 8601 date string' })
   timestamp?: string;
 }

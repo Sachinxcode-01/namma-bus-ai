@@ -7,7 +7,7 @@ describe('geo.util', () => {
       expect(dist).toBeCloseTo(0, 4);
     });
 
-    it('should accurately calculate distance between Bangalore MG Road and Majestic (approx 4.5 - 5.5 km)', () => {
+    it('should accurately calculate distance between Bangalore MG Road and Majestic (approx 3.5 - 4.5 km)', () => {
       // MG Road: 12.9756, 77.6066
       // Majestic: 12.9767, 77.5713
       const dist = haversineDistance(12.9756, 77.6066, 12.9767, 77.5713);
