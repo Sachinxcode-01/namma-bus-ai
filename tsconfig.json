@@ -11,7 +11,12 @@
     },
     "skipLibCheck": true
   },
-  "references": [
-    { "path": "./apps/api" }
+  "include": [
+    "apps/**/*",
+    "packages/**/*"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist"
   ]
 }
