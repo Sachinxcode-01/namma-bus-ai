@@ -6,6 +6,12 @@ import { PrismaModule } from './database/prisma.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { BusesModule } from './modules/buses/buses.module';
+import { StopsModule } from './modules/stops/stops.module';
+import { RoutesModule } from './modules/routes/routes.module';
+import { DriversModule } from './modules/drivers/drivers.module';
+import { StudentsModule } from './modules/students/students.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -20,6 +26,12 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     HealthModule,
     AuthModule,
     UsersModule,
+    BusesModule,
+    StopsModule,
+    RoutesModule,
+    DriversModule,
+    StudentsModule,
+    SubscriptionsModule,
   ],
 })
 export class AppModule implements NestModule {

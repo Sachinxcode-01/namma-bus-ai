@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { BusesController } from './buses.controller';
+import { BusesService } from './buses.service';
+import { BusesRepository } from './buses.repository';
+
+@Module({
+  controllers: [BusesController],
+  providers: [BusesService, BusesRepository],
+  exports: [BusesService, BusesRepository],
+})
+export class BusesModule {}
