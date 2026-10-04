@@ -147,12 +147,20 @@ export class DriversRepository {
         user: {
           select: { id: true, email: true, isActive: true },
         },
+        trips: {
+          where: { status: TripStatus.ACTIVE },
+          select: { id: true, routeId: true, busId: true, status: true },
+          take: 1,
+        },
         _count: {
           select: { trips: true },
         },
       },
     });
 
-    return updated;
+    return {
+      ...updated,
+      activeTrip: updated.trips[0] ?? null,
+    };
   }
 }

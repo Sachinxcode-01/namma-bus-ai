@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -12,6 +13,7 @@ import {
 
 export class CreateBusDto {
   @ApiProperty({ example: 'BUS-01', description: 'Internal fleet bus identifier' })
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
@@ -21,6 +23,7 @@ export class CreateBusDto {
     example: 'KA-01-EA-1234',
     description: 'Official vehicle registration / license plate number',
   })
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)

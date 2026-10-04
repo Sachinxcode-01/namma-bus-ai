@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { DriversRepository, DriverWithDetails } from './drivers.repository';
 import { QueryDriversDto } from './dto/query-drivers.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
@@ -68,16 +68,18 @@ export class DriversService {
       throw new ForbiddenException('You are not authorized to update another driver profile.');
     }
 
-    if (dto.licenseNumber && !isAdmin && dto.licenseNumber !== existing.licenseNumber) {
+    const normalizedLicense = dto.licenseNumber
+      ? dto.licenseNumber.trim().toUpperCase()
+      : undefined;
+
+    if (normalizedLicense && !isAdmin && normalizedLicense !== existing.licenseNumber) {
       throw new ForbiddenException(
         'Only administrators can update driver commercial license numbers.',
       );
     }
 
-    if (dto.licenseNumber && dto.licenseNumber.trim().toUpperCase() !== existing.licenseNumber) {
-      const conflict = await this.driversRepository.findByLicenseNumber(
-        dto.licenseNumber.trim().toUpperCase(),
-      );
+    if (normalizedLicense && normalizedLicense !== existing.licenseNumber) {
+      const conflict = await this.driversRepository.findByLicenseNumber(normalizedLicense);
       if (conflict && conflict.id !== id) {
         throw new ConflictException(
           `Driver with license number '${dto.licenseNumber}' already exists.`,
@@ -85,8 +87,20 @@ export class DriversService {
       }
     }
 
-    const updated = await this.driversRepository.update(id, dto);
-    this.logger.log(`Driver updated: ID=${id}, Name=${updated.name}`);
-    return updated;
+    try {
+      const updated = await this.driversRepository.update(id, {
+        ...dto,
+        licenseNumber: normalizedLicense,
+      });
+      this.logger.log(`Driver updated: ID=${id}, Name=${updated.name}`);
+      return updated;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(
+          `Driver with license number '${dto.licenseNumber}' already exists.`,
+        );
+      }
+      throw error;
+    }
   }
 }

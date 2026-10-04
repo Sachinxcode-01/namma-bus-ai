@@ -141,13 +141,27 @@ export class RoutesRepository {
     routeId: string,
     stops: { stopId: string; sequenceOrder: number; estimatedMinutesFromStart?: number }[],
   ): Promise<OrderedRouteStop[]> {
+    const newStopIds = stops.map((s) => s.stopId);
+
     return this.prisma.$transaction(async (tx) => {
-      // 1. Remove existing route stops
+      // 1. Deactivate active subscriptions for stops being removed from this route
+      await tx.subscription.updateMany({
+        where: {
+          routeId,
+          stopId: { notIn: newStopIds },
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+        },
+      });
+
+      // 2. Remove existing route stops
       await tx.routeStop.deleteMany({
         where: { routeId },
       });
 
-      // 2. Insert new route stops
+      // 3. Insert new route stops
       await tx.routeStop.createMany({
         data: stops.map((s) => ({
           routeId,
@@ -157,7 +171,7 @@ export class RoutesRepository {
         })),
       });
 
-      // 3. Return refreshed ordered list
+      // 4. Return refreshed ordered list
       return tx.routeStop.findMany({
         where: { routeId },
         orderBy: { sequenceOrder: 'asc' },

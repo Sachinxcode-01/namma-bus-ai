@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserRole } from '@prisma/client';
+import { Subscription, UserRole } from '@prisma/client';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsRepository, SubscriptionWithDetails } from './subscriptions.repository';
 import { RoutesRepository, RouteWithDetails } from '../routes/routes.repository';
@@ -88,6 +88,7 @@ describe('SubscriptionsService', () => {
       isStopOnRoute: jest.fn(),
       create: jest.fn(),
       reactivate: jest.fn(),
+      deactivate: jest.fn(),
       delete: jest.fn(),
     };
 
@@ -177,10 +178,11 @@ describe('SubscriptionsService', () => {
   describe('remove', () => {
     it('should allow student to remove their own subscription', async () => {
       subRepo.findById.mockResolvedValue(mockSub as unknown as SubscriptionWithDetails);
-      subRepo.delete.mockResolvedValue(mockSub as unknown as SubscriptionWithDetails);
+      subRepo.deactivate.mockResolvedValue(mockSub as unknown as Subscription);
 
       const result = await service.remove('sub-123', studentUser);
       expect(result).toEqual({ deleted: true, id: 'sub-123' });
+      expect(subRepo.deactivate).toHaveBeenCalledWith('sub-123');
     });
 
     it('should forbid student from deleting another students subscription', async () => {
