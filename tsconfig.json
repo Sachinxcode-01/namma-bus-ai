@@ -4,7 +4,10 @@
     "moduleResolution": "node",
     "target": "ES2021",
     "baseUrl": "./",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "types": []
   },
   "include": [
     "packages/**/*"

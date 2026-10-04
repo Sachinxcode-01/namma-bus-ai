@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  /* Color System (HSL Tailored) */
+  --nb-bg-darkest: hsl(222, 47%, 7%);
+  --nb-bg-main: hsl(222, 47%, 10%);
+  --nb-bg-surface: hsl(222, 47%, 13%);
+  --nb-bg-surface-elevated: hsl(222, 44%, 17%);
+  --nb-bg-glass: rgba(18, 24, 38, 0.75);
+  --nb-bg-glass-card: rgba(26, 34, 52, 0.65);
+  
+  --nb-border-subtle: rgba(255, 255, 255, 0.07);
+  --nb-border-medium: rgba(255, 255, 255, 0.14);
+  --nb-border-bright: rgba(255, 255, 255, 0.25);
+  --nb-border-focus: hsl(217, 91%, 60%);
+
+  /* Brand Accents */
+  --nb-primary: hsl(217, 91%, 60%);
+  --nb-primary-glow: rgba(59, 130, 246, 0.35);
+  --nb-primary-hover: hsl(217, 91%, 68%);
+  
+  /* Domain-specific transport colors */
+  --nb-bus-amber: hsl(38, 96%, 53%);
+  --nb-bus-amber-glow: rgba(245, 158, 11, 0.35);
+  --nb-bus-amber-dark: hsl(38, 92%, 40%);
+
+  --nb-emerald-on-time: hsl(158, 64%, 48%);
+  --nb-emerald-glow: rgba(16, 185, 129, 0.35);
+
+  --nb-rose-danger: hsl(348, 83%, 55%);
+  --nb-rose-glow: rgba(239, 68, 68, 0.35);
+
+  --nb-purple-accent: hsl(265, 89%, 66%);
+
+  /* Typography Colors */
+  --nb-text-primary: #f8fafc;
+  --nb-text-secondary: #94a3b8;
+  --nb-text-muted: #64748b;
+  --nb-text-inverse: #0f172a;
+
+  /* Typography Sizing & Families */
+  --nb-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --nb-font-mono: 'JetBrains Mono', monospace;
+
+  /* Shadows & Depth */
+  --nb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --nb-shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --nb-shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.6), 0 4px 8px -2px rgba(0, 0, 0, 0.4);
+  --nb-shadow-glow: 0 0 24px var(--nb-primary-glow);
+  --nb-shadow-gold-glow: 0 0 24px var(--nb-bus-amber-glow);
+
+  /* Radii */
+  --nb-radius-sm: 6px;
+  --nb-radius-md: 12px;
+  --nb-radius-lg: 18px;
+  --nb-radius-xl: 24px;
+  --nb-radius-full: 9999px;
+
+  /* Transitions (120 FPS Optimized: use transform & opacity only) */
+  --nb-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --nb-duration-fast: 150ms;
+  --nb-duration-normal: 250ms;
+  --nb-duration-slow: 400ms;
+}
+
+/* Light Mode Overrides if user/admin prefers */
+[data-theme="light"] {
+  --nb-bg-darkest: #f1f5f9;
+  --nb-bg-main: #f8fafc;
+  --nb-bg-surface: #ffffff;
+  --nb-bg-surface-elevated: #ffffff;
+  --nb-bg-glass: rgba(255, 255, 255, 0.85);
+  --nb-bg-glass-card: rgba(255, 255, 255, 0.75);
+
+  --nb-border-subtle: rgba(0, 0, 0, 0.08);
+  --nb-border-medium: rgba(0, 0, 0, 0.16);
+  --nb-border-bright: rgba(0, 0, 0, 0.3);
+
+  --nb-text-primary: #0f172a;
+  --nb-text-secondary: #475569;
+  --nb-text-muted: #64748b;
+  --nb-text-inverse: #f8fafc;
+
+  --nb-shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+  --nb-shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.12);
+}
+
+/* Core Base Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--nb-font-sans);
+  background-color: var(--nb-bg-darkest);
+  color: var(--nb-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+/* 120 FPS Keyframe Animations */
+@keyframes nb-pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+@keyframes nb-bus-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes nb-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes nb-slide-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Reduced Motion Override for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
