@@ -5,45 +5,39 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Length,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
 export class CreateBusDto {
-  @ApiProperty({
-    example: 'BUS-101',
-    description: 'Internal college bus identification number or identifier',
-  })
+  @ApiProperty({ example: 'BUS-01', description: 'Internal fleet bus identifier' })
   @IsString()
-  @IsNotEmpty({ message: 'Bus number is required.' })
-  @Length(2, 30, { message: 'Bus number must be between 2 and 30 characters.' })
+  @IsNotEmpty()
+  @MaxLength(50)
   busNumber!: string;
 
   @ApiProperty({
-    example: 'KA-04-AB-1234',
-    description: 'Government motor vehicle registration number',
+    example: 'KA-01-EA-1234',
+    description: 'Official vehicle registration / license plate number',
   })
   @IsString()
-  @IsNotEmpty({ message: 'Registration number is required.' })
-  @Length(4, 30, { message: 'Registration number must be between 4 and 30 characters.' })
+  @IsNotEmpty()
+  @MaxLength(50)
   registrationNumber!: string;
 
-  @ApiProperty({
-    example: 45,
-    description: 'Passenger seating capacity of the bus',
-  })
-  @IsInt({ message: 'Capacity must be an integer.' })
-  @Min(5, { message: 'Capacity must be at least 5.' })
-  @Max(120, { message: 'Capacity cannot exceed 120.' })
+  @ApiProperty({ example: 45, description: 'Seating capacity of the bus' })
+  @IsInt()
+  @Min(1)
+  @Max(150)
   capacity!: number;
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Operational active status of the bus',
     default: true,
+    description: 'Whether the bus is active in service',
   })
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  isActive?: boolean = true;
 }

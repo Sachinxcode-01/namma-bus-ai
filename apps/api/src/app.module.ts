@@ -10,6 +10,8 @@ import { BusesModule } from './modules/buses/buses.module';
 import { StopsModule } from './modules/stops/stops.module';
 import { RoutesModule } from './modules/routes/routes.module';
 import { DriversModule } from './modules/drivers/drivers.module';
+import { StudentsModule } from './modules/students/students.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -28,6 +30,8 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     StopsModule,
     RoutesModule,
     DriversModule,
+    StudentsModule,
+    SubscriptionsModule,
   ],
 })
 export class AppModule implements NestModule {

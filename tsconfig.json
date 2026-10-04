@@ -3,18 +3,20 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "target": "ES2021",
-    "baseUrl": "./",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "jsx": "react-jsx",
-    "types": []
+    "baseUrl": ".",
+    "paths": {
+      "@prisma/client": ["./apps/api/node_modules/@prisma/client"],
+      ".prisma/client/*": ["./apps/api/node_modules/.prisma/client/*"],
+      "@nammabus/shared-types": ["./packages/shared-types/src/index.ts"]
+    },
+    "skipLibCheck": true
   },
   "include": [
+    "apps/**/*",
     "packages/**/*"
   ],
   "exclude": [
-    "apps",
-    "node_modules",
-    "dist"
+    "**/node_modules",
+    "**/dist"
   ]
 }

@@ -1,22 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Route, RouteStop, Prisma } from '@prisma/client';
-import { CreateRouteDto } from './dto/create-route.dto';
-import { UpdateRouteDto } from './dto/update-route.dto';
-import { AddRouteStopDto } from './dto/add-route-stop.dto';
+import { Prisma, Route, RouteStop, Stop } from '@prisma/client';
 
-export type RouteWithStops = Route & {
-  routeStops: (RouteStop & {
-    stop: {
-      id: string;
-      name: string;
-      code: string;
-      latitude: number;
-      longitude: number;
-      geofenceRadiusMeters: number;
-    };
-  })[];
+export type RouteWithDetails = Route & {
+  routeStops?: (RouteStop & { stop: Stop })[];
+  _count?: {
+    routeStops: number;
+    trips: number;
+    subscriptions: number;
+  };
 };
+
+export type OrderedRouteStop = RouteStop & { stop: Stop };
 
 @Injectable()
 export class RoutesRepository {
@@ -25,9 +20,9 @@ export class RoutesRepository {
   async findMany(params: {
     skip: number;
     take: number;
-    isActive?: boolean;
     search?: string;
-  }): Promise<{ routes: Route[]; total: number }> {
+    isActive?: boolean;
+  }): Promise<{ routes: RouteWithDetails[]; total: number }> {
     const where: Prisma.RouteWhereInput = {};
 
     if (params.isActive !== undefined) {
@@ -48,6 +43,11 @@ export class RoutesRepository {
         skip: params.skip,
         take: params.take,
         orderBy: { code: 'asc' },
+        include: {
+          _count: {
+            select: { routeStops: true, trips: true, subscriptions: true },
+          },
+        },
       }),
       this.prisma.route.count({ where }),
     ]);
@@ -55,24 +55,18 @@ export class RoutesRepository {
     return { routes, total };
   }
 
-  async findById(id: string): Promise<RouteWithStops | null> {
+  async findById(id: string): Promise<RouteWithDetails | null> {
     return this.prisma.route.findUnique({
       where: { id },
       include: {
         routeStops: {
-          include: {
-            stop: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-                latitude: true,
-                longitude: true,
-                geofenceRadiusMeters: true,
-              },
-            },
-          },
           orderBy: { sequenceOrder: 'asc' },
+          include: {
+            stop: true,
+          },
+        },
+        _count: {
+          select: { routeStops: true, trips: true, subscriptions: true },
         },
       },
     });
@@ -80,30 +74,50 @@ export class RoutesRepository {
 
   async findByCode(code: string): Promise<Route | null> {
     return this.prisma.route.findUnique({
-      where: { code: code.trim().toUpperCase() },
+      where: { code },
     });
   }
 
-  async create(data: CreateRouteDto): Promise<Route> {
+  async create(data: {
+    name: string;
+    code: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<Route> {
     return this.prisma.route.create({
       data: {
         name: data.name.trim(),
         code: data.code.trim().toUpperCase(),
-        description: data.description?.trim(),
-        isActive: data.isActive !== undefined ? data.isActive : true,
+        description: data.description?.trim() ?? null,
+        isActive: data.isActive ?? true,
       },
     });
   }
 
-  async update(id: string, data: UpdateRouteDto): Promise<Route> {
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      code?: string;
+      description?: string;
+      isActive?: boolean;
+    },
+  ): Promise<Route> {
+    const updateData: Prisma.RouteUpdateInput = {};
+    if (data.name !== undefined) updateData.name = data.name.trim();
+    if (data.code !== undefined) updateData.code = data.code.trim().toUpperCase();
+    if (data.description !== undefined) updateData.description = data.description?.trim() ?? null;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
     return this.prisma.route.update({
       where: { id },
-      data: {
-        ...(data.name ? { name: data.name.trim() } : {}),
-        ...(data.code ? { code: data.code.trim().toUpperCase() } : {}),
-        ...(data.description !== undefined ? { description: data.description?.trim() } : {}),
-        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
-      },
+      data: updateData,
+    });
+  }
+
+  async countTrips(id: string): Promise<number> {
+    return this.prisma.trip.count({
+      where: { routeId: id },
     });
   }
 
@@ -113,71 +127,44 @@ export class RoutesRepository {
     });
   }
 
-  async addStop(routeId: string, data: AddRouteStopDto): Promise<RouteStop> {
-    return this.prisma.routeStop.create({
-      data: {
-        routeId,
-        stopId: data.stopId,
-        sequenceOrder: data.sequenceOrder,
-        estimatedMinutesFromStart: data.estimatedMinutesFromStart,
-      },
+  async findRouteStops(routeId: string): Promise<OrderedRouteStop[]> {
+    return this.prisma.routeStop.findMany({
+      where: { routeId },
+      orderBy: { sequenceOrder: 'asc' },
       include: {
         stop: true,
       },
     });
   }
 
-  async removeStop(routeId: string, stopId: string): Promise<void> {
-    await this.prisma.routeStop.delete({
-      where: {
-        routeId_stopId: {
-          routeId,
-          stopId,
-        },
-      },
-    });
-  }
-
-  async reorderStops(routeId: string, stops: AddRouteStopDto[]): Promise<RouteWithStops> {
+  async assignStops(
+    routeId: string,
+    stops: { stopId: string; sequenceOrder: number; estimatedMinutesFromStart?: number }[],
+  ): Promise<OrderedRouteStop[]> {
     return this.prisma.$transaction(async (tx) => {
       // 1. Remove existing route stops
       await tx.routeStop.deleteMany({
         where: { routeId },
       });
 
-      // 2. Insert reordered route stops
+      // 2. Insert new route stops
       await tx.routeStop.createMany({
         data: stops.map((s) => ({
           routeId,
           stopId: s.stopId,
           sequenceOrder: s.sequenceOrder,
-          estimatedMinutesFromStart: s.estimatedMinutesFromStart,
+          estimatedMinutesFromStart: s.estimatedMinutesFromStart ?? null,
         })),
       });
 
-      // 3. Return updated route with ordered stops
-      const updatedRoute = await tx.route.findUnique({
-        where: { id: routeId },
+      // 3. Return refreshed ordered list
+      return tx.routeStop.findMany({
+        where: { routeId },
+        orderBy: { sequenceOrder: 'asc' },
         include: {
-          routeStops: {
-            include: {
-              stop: {
-                select: {
-                  id: true,
-                  name: true,
-                  code: true,
-                  latitude: true,
-                  longitude: true,
-                  geofenceRadiusMeters: true,
-                },
-              },
-            },
-            orderBy: { sequenceOrder: 'asc' },
-          },
+          stop: true,
         },
       });
-
-      return updatedRoute!;
     });
   }
 }

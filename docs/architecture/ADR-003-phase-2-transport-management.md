@@ -1,35 +1,57 @@
-# ADR-003: Phase 2 - Transport Management (Buses, Stops, Routes, Drivers)
+# Architecture Decision Record (ADR) 003: Phase 2 Transport Management Architecture
 
 ## Status
+
 Accepted
 
 ## Context
-NammaBus AI requires structured management of physical transit assets and spatial network data:
-1. **Buses**: Fleet management with unique bus registration and internal fleet numbering, passenger capacity limits, and operational active toggling.
-2. **Stops**: Spatial entities defined by geographical coordinates (latitude [-90, 90], longitude [-180, 180]) and configurable geofencing radii (10m - 500m).
-3. **Routes & Sequencing**: Ordered transit itineraries linking stops with positive sequence indices (`sequenceOrder >= 1`) and estimated transit durations.
-4. **Drivers**: Operator profiles associated with specific user accounts, holding unique commercial driving licenses and contact details.
+
+NammaBus AI requires core operational transport modeling and management covering five interdependent domains: Fleet Buses, Stops & Geofencing, Sequential Routes, Driver profiles, and Student subscriptions. These entities establish the physical and logical network over which active trips, real-time GPS tracking, ETA calculations, and safety notifications will operate in Phases 3 and 4.
 
 ## Decisions
 
-### 1. Domain Separation & Repository Architecture
-* Decomposed transport management into four isolated NestJS domain modules: `BusesModule`, `StopsModule`, `RoutesModule`, and `DriversModule`.
-* Applied the Repository Pattern across all domains (`BusesRepository`, `StopsRepository`, `RoutesRepository`, `DriversRepository`), guaranteeing that controllers and domain services remain uncoupled from Prisma ORM implementation details.
+### 1. Domain Separation & Modular Monolith
 
-### 2. Strict Geospatial & DTO Validation
-* Validated GPS coordinates using class-validator `@Min(-90)` / `@Max(90)` for latitude and `@Min(-180)` / `@Max(180)` for longitude.
-* Enforced positive capacity and geofence radius constraints with `@Min(10)` and `@Max(500)`.
-* Enforced RFC4122 v4 UUID validation at both the HTTP routing layer via `ParseUUIDPipe` and within DTO payloads via `@IsUUID('4')`.
+The transport core is divided into five cohesive modules under `apps/api/src/modules/`:
 
-### 3. Atomic Route Stop Sequencing
-* Stop reordering operations (`PUT /api/v1/routes/:id/stops/reorder`) are executed inside an atomic Prisma database transaction (`$transaction`).
-* The transaction verifies route existence, checks stop validity, removes previous mappings, and reinserts the sequence atomically, eliminating partial sequencing states or sequence collisions.
+- `buses`: Fleet vehicle inventory, capacity tracking, vehicle registration, and active trip linkage.
+- `stops`: Designated bus stops with geographic coordinates (`latitude`, `longitude`) and customizable arrival detection radius (`geofenceRadiusMeters`).
+- `routes`: Operational bus transit routes with descriptive metadata and status.
+- `drivers`: Driver profiles linked to User accounts, with commercial license tracking and phone numbers.
+- `students`: Student directory with USN, contact info, and profile management.
+- `subscriptions`: Student boarding stop subscriptions linked to designated routes.
 
-### 4. Role-Based Access Control (RBAC)
-* Fleet creation, stop configuration, route definition, and driver assignment endpoints are restricted exclusively to `ADMIN` users via `@Roles(UserRole.ADMIN)` and `RolesGuard`.
-* Route listings, stop lookups, and bus schedules allow authenticated `STUDENT` and `DRIVER` users read access.
+### 2. Sequential Route Stops & Transactional Sequencing
+
+- Route alignment is modeled via the `RouteStop` join entity (`routeId`, `stopId`, `sequenceOrder`, `estimatedMinutesFromStart`).
+- Stopping sequences are enforced with composite unique constraints: `@@unique([routeId, sequenceOrder])` and `@@unique([routeId, stopId])`.
+- Reordering and bulk stop assignment (`POST /api/v1/routes/:id/stops`) is executed inside an atomic database transaction (`$transaction`):
+  1. Verifies that all referenced stops exist in the database.
+  2. Ensures stop IDs and sequence orders are unique and non-overlapping.
+  3. Replaces previous stop alignments atomically, preventing intermediate broken route states.
+
+### 3. Subscription Verification & Route Membership
+
+- Students subscribe to a specific boarding stop on a designated route (`POST /api/v1/subscriptions`).
+- **Enforced Boundary**: The subscription service verifies that the selected stop is actively assigned to the designated route via `RouteStop`. Subscriptions to stops not on the selected route are rejected with `VALIDATION_ERROR` (HTTP 400).
+- Duplicate subscriptions are prevented by the database composite constraint `@@unique([studentId, stopId, routeId])`. Re-subscribing to a deactivated subscription reactivates the record cleanly.
+
+### 4. Integrity Protection on Deletions
+
+- **Buses**: Deletion is rejected (`CONFLICT` HTTP 409) if any associated trip history exists (`countTrips > 0`). Fleet managers must deactivate buses (`isActive: false`) rather than delete them.
+- **Routes**: Deletion is rejected if any associated trips exist.
+- **Stops**: Deletion is rejected if the stop is currently used by any routes (`countRouteStops > 0`) or subscribed to by active students (`countSubscriptions > 0`).
+
+### 5. Role-Based Access Control (RBAC)
+
+- **Fleet & Route Mutators**: Creating, updating, and deleting buses, stops, routes, and route stops is strictly restricted to `UserRole.ADMIN`.
+- **Driver Profiles**: Drivers may update their own contact details (phone, name). Only administrators can modify official commercial driver license numbers (`licenseNumber`).
+- **Student Subscriptions**: Students can manage (create and cancel) their own route subscriptions. Administrators may manage subscriptions on behalf of any student.
+- **Inspectors & Viewers**: All authenticated personas (`STUDENT`, `DRIVER`, `ADMIN`) can read active buses, stops, and sequenced routes.
 
 ## Consequences
-* High data integrity across spatial network topologies.
-* Zero sequence drift or race conditions during dispatch route edits.
-* Scalable foundation ready for Phase 3 (Real-Time GPS Trips & Live Telemetry Ingestion).
+
+- Clean, versioned REST API contracts under `/api/v1` ready for Prem's frontend applications (Student App, Driver App, Admin Dashboard).
+- Guaranteed relational integrity and no orphaned records or broken geofence references.
+- Safe deletion guards prevent accidental loss of operational audit and trip histories.
+- Complete unit test coverage for each domain service with 100% mocked isolation.

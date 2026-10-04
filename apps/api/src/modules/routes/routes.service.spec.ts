@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RoutesService } from './routes.service';
-import { RoutesRepository, RouteWithStops } from './routes.repository';
+import { RoutesRepository } from './routes.repository';
 import { StopsRepository } from '../stops/stops.repository';
 import {
   ConflictException,
@@ -13,11 +13,11 @@ describe('RoutesService', () => {
   let routesRepo: jest.Mocked<RoutesRepository>;
   let stopsRepo: jest.Mocked<StopsRepository>;
 
-  const mockRoute: RouteWithStops = {
-    id: 'route-uuid-1',
-    name: 'Campus Express',
-    code: 'R-101',
-    description: 'Main express route',
+  const mockRoute = {
+    id: 'route-123',
+    name: 'Hebbal to Campus',
+    code: 'R-12',
+    description: 'Express morning route',
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -25,11 +25,11 @@ describe('RoutesService', () => {
   };
 
   const mockStop = {
-    id: 'stop-uuid-1',
-    name: 'Main Gate',
-    code: 'STP-MG',
-    latitude: 12.9,
-    longitude: 77.5,
+    id: 'stop-1',
+    name: 'Hebbal Stop',
+    code: 'STP-1',
+    latitude: 13.0,
+    longitude: 77.0,
     geofenceRadiusMeters: 50.0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -42,10 +42,10 @@ describe('RoutesService', () => {
       findByCode: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      countTrips: jest.fn(),
       delete: jest.fn(),
-      addStop: jest.fn(),
-      removeStop: jest.fn(),
-      reorderStops: jest.fn(),
+      assignStops: jest.fn(),
+      findRouteStops: jest.fn(),
     };
 
     const mockStopsRepo = {
@@ -55,8 +55,14 @@ describe('RoutesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoutesService,
-        { provide: RoutesRepository, useValue: mockRoutesRepo },
-        { provide: StopsRepository, useValue: mockStopsRepo },
+        {
+          provide: RoutesRepository,
+          useValue: mockRoutesRepo,
+        },
+        {
+          provide: StopsRepository,
+          useValue: mockStopsRepo,
+        },
       ],
     }).compile();
 
@@ -66,107 +72,106 @@ describe('RoutesService', () => {
   });
 
   describe('create', () => {
-    it('should create route when code is unique', async () => {
-      routesRepo.findByCode.mockResolvedValueOnce(null);
-      routesRepo.create.mockResolvedValueOnce(mockRoute);
+    it('should create route successfully', async () => {
+      routesRepo.findByCode.mockResolvedValue(null);
+      routesRepo.create.mockResolvedValue(mockRoute);
 
       const result = await service.create({
-        name: 'Campus Express',
-        code: 'R-101',
+        name: 'Hebbal to Campus',
+        code: 'R-12',
       });
 
       expect(result).toEqual(mockRoute);
     });
 
     it('should throw ConflictException if route code exists', async () => {
-      routesRepo.findByCode.mockResolvedValueOnce(mockRoute);
+      routesRepo.findByCode.mockResolvedValue(mockRoute);
 
       await expect(
         service.create({
-          name: 'Campus Express',
-          code: 'R-101',
+          name: 'Another Route',
+          code: 'R-12',
         }),
       ).rejects.toThrow(ConflictException);
     });
   });
 
-  describe('addStop', () => {
-    it('should add stop to route successfully', async () => {
-      routesRepo.findById.mockResolvedValueOnce({
-        ...mockRoute,
-        routeStops: [],
-      });
-      stopsRepo.findById.mockResolvedValueOnce(mockStop);
-      routesRepo.addStop.mockResolvedValueOnce({
-        id: 'rs-uuid-1',
-        routeId: mockRoute.id,
-        stopId: mockStop.id,
-        sequenceOrder: 1,
-        estimatedMinutesFromStart: 10,
-        createdAt: new Date(),
+  describe('findAll', () => {
+    it('should return paginated routes', async () => {
+      routesRepo.findMany.mockResolvedValue({
+        routes: [mockRoute],
+        total: 1,
       });
 
-      const result = await service.addStop(mockRoute.id, {
-        stopId: mockStop.id,
-        sequenceOrder: 1,
-        estimatedMinutesFromStart: 10,
-      });
+      const result = await service.findAll({ page: 1, limit: 10 });
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(1);
+    });
+  });
 
-      expect(result.sequenceOrder).toBe(1);
-      expect(routesRepo.addStop).toHaveBeenCalled();
+  describe('findOne', () => {
+    it('should return route when found', async () => {
+      routesRepo.findById.mockResolvedValue(mockRoute);
+
+      const result = await service.findOne('route-123');
+      expect(result).toEqual(mockRoute);
     });
 
-    it('should reject if stop does not exist', async () => {
-      routesRepo.findById.mockResolvedValueOnce(mockRoute);
-      stopsRepo.findById.mockResolvedValueOnce(null);
+    it('should throw NotFoundException when route does not exist', async () => {
+      routesRepo.findById.mockResolvedValue(null);
 
-      await expect(
-        service.addStop(mockRoute.id, {
-          stopId: 'missing-stop',
+      await expect(service.findOne('invalid-route')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('assignStops', () => {
+    it('should assign stops in sequence successfully', async () => {
+      routesRepo.findById.mockResolvedValue(mockRoute);
+      stopsRepo.findById.mockResolvedValue(mockStop);
+      routesRepo.assignStops.mockResolvedValue([
+        {
+          id: 'rs-1',
+          routeId: 'route-123',
+          stopId: 'stop-1',
           sequenceOrder: 1,
-        }),
-      ).rejects.toThrow(NotFoundException);
-    });
+          estimatedMinutesFromStart: 0,
+          createdAt: new Date(),
+          stop: mockStop,
+        },
+      ]);
 
-    it('should reject if sequenceOrder is already occupied', async () => {
-      routesRepo.findById.mockResolvedValueOnce({
-        ...mockRoute,
-        routeStops: [
+      const result = await service.assignStops('route-123', {
+        stops: [
           {
-            id: 'rs-1',
-            routeId: mockRoute.id,
-            stopId: 'other-stop',
+            stopId: 'stop-1',
             sequenceOrder: 1,
-            estimatedMinutesFromStart: 5,
-            createdAt: new Date(),
-            stop: {
-              id: 'other-stop',
-              name: 'Other',
-              code: 'STP-OTH',
-              latitude: 12.0,
-              longitude: 77.0,
-              geofenceRadiusMeters: 50.0,
-            },
+            estimatedMinutesFromStart: 0,
           },
         ],
       });
-      stopsRepo.findById.mockResolvedValueOnce(mockStop);
 
-      await expect(
-        service.addStop(mockRoute.id, {
-          stopId: mockStop.id,
-          sequenceOrder: 1,
-        }),
-      ).rejects.toThrow(ConflictException);
+      expect(result).toHaveLength(1);
+      expect(routesRepo.assignStops).toHaveBeenCalled();
     });
-  });
 
-  describe('reorderStops', () => {
-    it('should reject reorder payload with duplicate sequence orders', async () => {
-      routesRepo.findById.mockResolvedValueOnce(mockRoute);
+    it('should reject duplicate stopIds on the same route', async () => {
+      routesRepo.findById.mockResolvedValue(mockRoute);
 
       await expect(
-        service.reorderStops(mockRoute.id, {
+        service.assignStops('route-123', {
+          stops: [
+            { stopId: 'stop-1', sequenceOrder: 1 },
+            { stopId: 'stop-1', sequenceOrder: 2 },
+          ],
+        }),
+      ).rejects.toThrow(ValidationException);
+    });
+
+    it('should reject duplicate sequenceOrders on the same route', async () => {
+      routesRepo.findById.mockResolvedValue(mockRoute);
+
+      await expect(
+        service.assignStops('route-123', {
           stops: [
             { stopId: 'stop-1', sequenceOrder: 1 },
             { stopId: 'stop-2', sequenceOrder: 1 },
@@ -175,17 +180,15 @@ describe('RoutesService', () => {
       ).rejects.toThrow(ValidationException);
     });
 
-    it('should reject reorder payload with duplicate stop IDs', async () => {
-      routesRepo.findById.mockResolvedValueOnce(mockRoute);
+    it('should throw NotFoundException if any referenced stopId does not exist', async () => {
+      routesRepo.findById.mockResolvedValue(mockRoute);
+      stopsRepo.findById.mockResolvedValue(null);
 
       await expect(
-        service.reorderStops(mockRoute.id, {
-          stops: [
-            { stopId: 'stop-1', sequenceOrder: 1 },
-            { stopId: 'stop-1', sequenceOrder: 2 },
-          ],
+        service.assignStops('route-123', {
+          stops: [{ stopId: 'non-existent-stop', sequenceOrder: 1 }],
         }),
-      ).rejects.toThrow(ValidationException);
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

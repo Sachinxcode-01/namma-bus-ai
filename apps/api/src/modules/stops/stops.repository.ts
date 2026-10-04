@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Stop, Prisma } from '@prisma/client';
-import { CreateStopDto } from './dto/create-stop.dto';
-import { UpdateStopDto } from './dto/update-stop.dto';
+import { Prisma, Stop } from '@prisma/client';
+
+export type StopWithRelations = Stop & {
+  _count?: {
+    routeStops: number;
+    subscriptions: number;
+  };
+};
 
 @Injectable()
 export class StopsRepository {
@@ -12,7 +17,7 @@ export class StopsRepository {
     skip: number;
     take: number;
     search?: string;
-  }): Promise<{ stops: Stop[]; total: number }> {
+  }): Promise<{ stops: StopWithRelations[]; total: number }> {
     const where: Prisma.StopWhereInput = {};
 
     if (params.search) {
@@ -29,6 +34,11 @@ export class StopsRepository {
         skip: params.skip,
         take: params.take,
         orderBy: { name: 'asc' },
+        include: {
+          _count: {
+            select: { routeStops: true, subscriptions: true },
+          },
+        },
       }),
       this.prisma.stop.count({ where }),
     ]);
@@ -36,15 +46,12 @@ export class StopsRepository {
     return { stops, total };
   }
 
-  async findById(id: string): Promise<Stop | null> {
+  async findById(id: string): Promise<StopWithRelations | null> {
     return this.prisma.stop.findUnique({
       where: { id },
       include: {
-        routeStops: {
-          include: {
-            route: { select: { id: true, code: true, name: true } },
-          },
-          orderBy: { sequenceOrder: 'asc' },
+        _count: {
+          select: { routeStops: true, subscriptions: true },
         },
       },
     });
@@ -52,35 +59,62 @@ export class StopsRepository {
 
   async findByCode(code: string): Promise<Stop | null> {
     return this.prisma.stop.findUnique({
-      where: { code: code.trim().toUpperCase() },
+      where: { code },
     });
   }
 
-  async create(data: CreateStopDto): Promise<Stop> {
+  async create(data: {
+    name: string;
+    code: string;
+    latitude: number;
+    longitude: number;
+    geofenceRadiusMeters?: number;
+  }): Promise<Stop> {
     return this.prisma.stop.create({
       data: {
         name: data.name.trim(),
         code: data.code.trim().toUpperCase(),
-        latitude: Number(data.latitude),
-        longitude: Number(data.longitude),
-        geofenceRadiusMeters:
-          data.geofenceRadiusMeters !== undefined ? Number(data.geofenceRadiusMeters) : 50.0,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        geofenceRadiusMeters: data.geofenceRadiusMeters ?? 50.0,
       },
     });
   }
 
-  async update(id: string, data: UpdateStopDto): Promise<Stop> {
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      code?: string;
+      latitude?: number;
+      longitude?: number;
+      geofenceRadiusMeters?: number;
+    },
+  ): Promise<Stop> {
+    const updateData: Prisma.StopUpdateInput = {};
+    if (data.name !== undefined) updateData.name = data.name.trim();
+    if (data.code !== undefined) updateData.code = data.code.trim().toUpperCase();
+    if (data.latitude !== undefined) updateData.latitude = data.latitude;
+    if (data.longitude !== undefined) updateData.longitude = data.longitude;
+    if (data.geofenceRadiusMeters !== undefined) {
+      updateData.geofenceRadiusMeters = data.geofenceRadiusMeters;
+    }
+
     return this.prisma.stop.update({
       where: { id },
-      data: {
-        ...(data.name ? { name: data.name.trim() } : {}),
-        ...(data.code ? { code: data.code.trim().toUpperCase() } : {}),
-        ...(data.latitude !== undefined ? { latitude: Number(data.latitude) } : {}),
-        ...(data.longitude !== undefined ? { longitude: Number(data.longitude) } : {}),
-        ...(data.geofenceRadiusMeters !== undefined
-          ? { geofenceRadiusMeters: Number(data.geofenceRadiusMeters) }
-          : {}),
-      },
+      data: updateData,
+    });
+  }
+
+  async countRouteStops(id: string): Promise<number> {
+    return this.prisma.routeStop.count({
+      where: { stopId: id },
+    });
+  }
+
+  async countSubscriptions(id: string): Promise<number> {
+    return this.prisma.subscription.count({
+      where: { stopId: id },
     });
   }
 

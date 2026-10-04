@@ -1,24 +1,24 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateDriverDto {
-  @ApiPropertyOptional({ example: 'Manjunath Gowda' })
+  @ApiPropertyOptional({ example: 'Suresh Kumar', description: 'Driver full name' })
   @IsOptional()
   @IsString()
-  @Length(2, 100, { message: 'Name must be between 2 and 100 characters.' })
+  @MaxLength(100)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'KA0420190099999' })
+  @ApiPropertyOptional({ example: '+919876543210', description: 'Contact phone number' })
   @IsOptional()
   @IsString()
-  @Length(5, 50, { message: 'License number must be between 5 and 50 characters.' })
-  licenseNumber?: string;
-
-  @ApiPropertyOptional({ example: '+919845012999' })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\+?[1-9]\d{7,14}$/, {
-    message: 'Phone number must be a valid international or E.164 phone format.',
-  })
   phone?: string;
+
+  @ApiPropertyOptional({
+    example: 'KA-01-2020-0012345',
+    description: 'Commercial driving license number',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  licenseNumber?: string;
 }

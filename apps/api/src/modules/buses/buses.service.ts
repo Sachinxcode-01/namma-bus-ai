@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Bus } from '@prisma/client';
-import { BusesRepository } from './buses.repository';
+import { BusesRepository, BusWithStatus } from './buses.repository';
 import { CreateBusDto } from './dto/create-bus.dto';
 import { UpdateBusDto } from './dto/update-bus.dto';
 import { QueryBusesDto } from './dto/query-buses.dto';
-import { PaginatedResult } from '../users/users.service';
 import { ConflictException, NotFoundException } from '../../common/errors/app.exception';
+import { PaginatedResult } from '../users/users.service';
 
 @Injectable()
 export class BusesService {
@@ -13,7 +13,28 @@ export class BusesService {
 
   constructor(private readonly busesRepository: BusesRepository) {}
 
-  async findAll(query: QueryBusesDto): Promise<PaginatedResult<Bus>> {
+  async create(dto: CreateBusDto): Promise<Bus> {
+    const [existingBusNumber, existingRegNumber] = await Promise.all([
+      this.busesRepository.findByBusNumber(dto.busNumber.trim()),
+      this.busesRepository.findByRegistrationNumber(dto.registrationNumber.trim().toUpperCase()),
+    ]);
+
+    if (existingBusNumber) {
+      throw new ConflictException(`Bus with bus number '${dto.busNumber}' already exists.`);
+    }
+
+    if (existingRegNumber) {
+      throw new ConflictException(
+        `Bus with registration number '${dto.registrationNumber}' already exists.`,
+      );
+    }
+
+    const bus = await this.busesRepository.create(dto);
+    this.logger.log(`Bus created: ID=${bus.id}, BusNumber=${bus.busNumber}`);
+    return bus;
+  }
+
+  async findAll(query: QueryBusesDto): Promise<PaginatedResult<BusWithStatus>> {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 20;
     const skip = (page - 1) * limit;
@@ -21,8 +42,8 @@ export class BusesService {
     const { buses, total } = await this.busesRepository.findMany({
       skip,
       take: limit,
-      isActive: query.isActive,
       search: query.search,
+      isActive: query.isActive,
     });
 
     return {
@@ -34,7 +55,7 @@ export class BusesService {
     };
   }
 
-  async findOne(id: string): Promise<Bus> {
+  async findOne(id: string): Promise<BusWithStatus> {
     const bus = await this.busesRepository.findById(id);
     if (!bus) {
       throw new NotFoundException('Bus', id);
@@ -42,59 +63,47 @@ export class BusesService {
     return bus;
   }
 
-  async create(dto: CreateBusDto): Promise<Bus> {
-    const existingBusNum = await this.busesRepository.findByBusNumber(dto.busNumber);
-    if (existingBusNum) {
-      throw new ConflictException(`Bus number '${dto.busNumber}' is already registered.`);
-    }
-
-    const existingReg = await this.busesRepository.findByRegistrationNumber(dto.registrationNumber);
-    if (existingReg) {
-      throw new ConflictException(
-        `Registration number '${dto.registrationNumber}' is already registered.`,
-      );
-    }
-
-    const created = await this.busesRepository.create(dto);
-    this.logger.log(`Bus created: ${created.id} (${created.busNumber})`);
-    return created;
-  }
-
   async update(id: string, dto: UpdateBusDto): Promise<Bus> {
-    const bus = await this.findOne(id);
+    const existing = await this.findOne(id);
 
-    if (dto.busNumber && dto.busNumber.toUpperCase() !== bus.busNumber) {
-      const existing = await this.busesRepository.findByBusNumber(dto.busNumber);
-      if (existing && existing.id !== id) {
-        throw new ConflictException(`Bus number '${dto.busNumber}' is already in use.`);
+    if (dto.busNumber && dto.busNumber.trim() !== existing.busNumber) {
+      const conflict = await this.busesRepository.findByBusNumber(dto.busNumber.trim());
+      if (conflict && conflict.id !== id) {
+        throw new ConflictException(`Bus with bus number '${dto.busNumber}' already exists.`);
       }
     }
 
-    if (dto.registrationNumber && dto.registrationNumber.toUpperCase() !== bus.registrationNumber) {
-      const existing = await this.busesRepository.findByRegistrationNumber(dto.registrationNumber);
-      if (existing && existing.id !== id) {
+    if (
+      dto.registrationNumber &&
+      dto.registrationNumber.trim().toUpperCase() !== existing.registrationNumber
+    ) {
+      const conflict = await this.busesRepository.findByRegistrationNumber(
+        dto.registrationNumber.trim().toUpperCase(),
+      );
+      if (conflict && conflict.id !== id) {
         throw new ConflictException(
-          `Registration number '${dto.registrationNumber}' is already in use.`,
+          `Bus with registration number '${dto.registrationNumber}' already exists.`,
         );
       }
     }
 
     const updated = await this.busesRepository.update(id, dto);
-    this.logger.log(`Bus updated: ${updated.id} (${updated.busNumber})`);
+    this.logger.log(`Bus updated: ID=${id}`);
     return updated;
   }
 
-  async remove(id: string): Promise<Bus> {
+  async remove(id: string): Promise<{ deleted: boolean; id: string }> {
     await this.findOne(id);
-    try {
-      const deleted = await this.busesRepository.delete(id);
-      this.logger.log(`Bus deleted: ${deleted.id} (${deleted.busNumber})`);
-      return deleted;
-    } catch {
-      // If bus has trips linked to it, toggle active status instead of hard deletion
-      const deactivated = await this.busesRepository.update(id, { isActive: false });
-      this.logger.log(`Bus ${id} has relational references, soft-deactivated (isActive=false).`);
-      return deactivated;
+
+    const tripCount = await this.busesRepository.countTrips(id);
+    if (tripCount > 0) {
+      throw new ConflictException(
+        `Cannot delete bus with ${tripCount} associated trip(s). Deactivate the bus instead.`,
+      );
     }
+
+    await this.busesRepository.delete(id);
+    this.logger.log(`Bus deleted: ID=${id}`);
+    return { deleted: true, id };
   }
 }

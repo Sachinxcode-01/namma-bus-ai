@@ -1,16 +1,33 @@
-import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { CreateRouteDto } from './create-route.dto';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class UpdateRouteDto extends PartialType(CreateRouteDto) {
-  @ApiPropertyOptional({ example: 'Campus to Majestic Express Updated' })
+export class UpdateRouteDto {
+  @ApiPropertyOptional({
+    example: 'Hebbal to College Campus Express',
+    description: 'Designated display name',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'R-101-NEW' })
+  @ApiPropertyOptional({ example: 'R-12-EXP', description: 'Unique operational route code' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
   code?: string;
 
-  @ApiPropertyOptional({ example: 'Updated route notes' })
+  @ApiPropertyOptional({
+    example: 'Updated stops and timing schedule',
+    description: 'Route description',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   description?: string;
 
-  @ApiPropertyOptional({ example: false })
+  @ApiPropertyOptional({ example: false, description: 'Whether the route is active' })
+  @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 }

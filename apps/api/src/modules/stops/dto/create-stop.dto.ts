@@ -6,52 +6,43 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  Length,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
 export class CreateStopDto {
   @ApiProperty({
-    example: 'Majestic Bus Stand',
-    description: 'Designated name of the bus boarding/alighting stop',
+    example: 'Hebbal Flyover Stop',
+    description: 'Designated name of the student bus stop',
   })
   @IsString()
-  @IsNotEmpty({ message: 'Stop name is required.' })
-  @Length(2, 100, { message: 'Stop name must be between 2 and 100 characters.' })
+  @IsNotEmpty()
+  @MaxLength(100)
   name!: string;
 
-  @ApiProperty({
-    example: 'STP-MAJ',
-    description: 'Unique operational identifier code for the stop',
-  })
+  @ApiProperty({ example: 'STP-HEB-01', description: 'Unique human-readable stop code' })
   @IsString()
-  @IsNotEmpty({ message: 'Stop code is required.' })
-  @Length(2, 30, { message: 'Stop code must be between 2 and 30 characters.' })
+  @IsNotEmpty()
+  @MaxLength(50)
   code!: string;
 
-  @ApiProperty({
-    example: 12.9778,
-    description: 'Geographic latitude coordinate (-90 to 90)',
-  })
-  @IsLatitude({ message: 'Latitude must be a valid coordinate between -90 and 90.' })
+  @ApiProperty({ example: 13.0358, description: 'Latitude coordinate in decimal degrees' })
+  @IsLatitude()
   latitude!: number;
 
-  @ApiProperty({
-    example: 77.5727,
-    description: 'Geographic longitude coordinate (-180 to 180)',
-  })
-  @IsLongitude({ message: 'Longitude must be a valid coordinate between -180 and 180.' })
+  @ApiProperty({ example: 77.597, description: 'Longitude coordinate in decimal degrees' })
+  @IsLongitude()
   longitude!: number;
 
   @ApiPropertyOptional({
     example: 50.0,
-    description: 'Geofence radius in meters around the stop coordinates (10m - 500m)',
     default: 50.0,
+    description: 'Geofence arrival detection radius in meters (10m - 1000m)',
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Geofence radius must be a number.' })
-  @Min(10, { message: 'Geofence radius must be at least 10 meters.' })
-  @Max(500, { message: 'Geofence radius cannot exceed 500 meters.' })
-  geofenceRadiusMeters?: number;
+  @IsNumber()
+  @Min(10)
+  @Max(1000)
+  geofenceRadiusMeters?: number = 50.0;
 }
