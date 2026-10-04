@@ -9,13 +9,19 @@
   ],
   "scripts": {
     "dev": "npm --prefix apps/api run start:dev",
+    "dev:student": "npm --prefix apps/student-app run dev",
+    "dev:driver": "npm --prefix apps/driver-app run dev",
+    "dev:admin": "npm --prefix apps/admin-dashboard run dev",
     "build": "npm --prefix apps/api run build",
+    "build:frontend": "npm run build --workspace=@nammabus/student-app --workspace=@nammabus/driver-app --workspace=@nammabus/admin-dashboard",
     "start": "npm --prefix apps/api run start:prod",
     "test": "npm --prefix apps/api run test",
     "test:e2e": "npm --prefix apps/api run test:e2e",
     "lint": "npm --prefix apps/api run lint",
     "format": "npm --prefix apps/api run format",
+    "format:check": "npm --prefix apps/api run format:check",
     "typecheck": "npm --prefix apps/api run typecheck",
+    "typecheck:frontend": "npm run typecheck --workspace=@nammabus/student-app --workspace=@nammabus/driver-app --workspace=@nammabus/admin-dashboard",
     "prisma:generate": "npm --prefix apps/api run prisma:generate",
     "prisma:migrate": "npm --prefix apps/api run prisma:migrate",
     "prisma:seed": "npm --prefix apps/api run prisma:seed"
@@ -28,5 +34,14 @@
     "transport"
   ],
   "author": "NammaBus AI Team",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.4.5",
+    "vite": "^6.4.3"
+  }
 }
