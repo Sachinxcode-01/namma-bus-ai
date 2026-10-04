@@ -1,17 +1,21 @@
 # NammaBus AI — REST API Standards and OpenAPI Documentation
 
 ## Base URL
+
 All domain endpoints are prefixed with version 1:
+
 ```text
 http://localhost:4000/api/v1
 ```
 
 Root endpoints:
+
 - `GET /health` — Liveness probe
 - `GET /health/ready` — Readiness probe (database connectivity)
 - `GET /docs` — Interactive Swagger UI
 
 ## Request Headers
+
 | Header | Description | Required | Example |
 | :--- | :--- | :--- | :--- |
 | `X-Request-ID` | Client correlation ID (auto-generated if omitted) | No | `req_9e47bf1b2c7e47a9` |
@@ -21,6 +25,7 @@ Root endpoints:
 ## Response Formats
 
 ### Standard Success Envelope
+
 ```json
 {
   "success": true,
@@ -34,6 +39,7 @@ Root endpoints:
 ```
 
 ### Standard Error Envelope
+
 ```json
 {
   "success": false,
@@ -50,6 +56,7 @@ Root endpoints:
 ```
 
 ## Standard Error Codes
+
 | Code | HTTP Status | Description |
 | :--- | :--- | :--- |
 | `VALIDATION_ERROR` | 400 | Bad input payload or malformed query parameter |
@@ -57,12 +64,13 @@ Root endpoints:
 | `FORBIDDEN` | 403 | Authenticated user lacks permission for action |
 | `NOT_FOUND` | 404 | Target resource does not exist |
 | `CONFLICT` | 409 | Unique constraint violation or state conflict |
-| `SERVICE_UNAVAILABLE`| 503 | Database or downstream critical service down |
-| `INTERNAL_SERVER_ERROR`| 500 | Unhandled server exception (details masked) |
+| `SERVICE_UNAVAILABLE` | 503 | Database or downstream critical service down |
+| `INTERNAL_SERVER_ERROR` | 500 | Unhandled server exception (details masked) |
 
 ## Phase 1 Endpoints
 
 ### Authentication (`/api/v1/auth`)
+
 - `POST /api/v1/auth/register/student` — Register student account (`email`, `password`, `name`, `usn`, optional `phone`).
 - `POST /api/v1/auth/register/driver` — Register driver account (`email`, `password`, `name`, `licenseNumber`, `phone`).
 - `POST /api/v1/auth/login` — Authenticate with `email` and `password`. Returns `{ accessToken, refreshToken, expiresIn, user }`.
@@ -71,7 +79,55 @@ Root endpoints:
 - `GET /api/v1/auth/me` — Retrieve authenticated user profile with role context (`STUDENT`, `DRIVER`, `ADMIN`).
 
 ### User Management (`/api/v1/users`)
+
 - `GET /api/v1/users` — List users with pagination and search (`page`, `limit`, `role`, `search`). **Admin only**.
 - `GET /api/v1/users/:id` — Retrieve user profile by ID. **Admin or account owner**.
 - `PATCH /api/v1/users/:id/status` — Activate/deactivate account (`isActive: boolean`). **Admin only**.
 
+## Phase 2 Endpoints (Transport Management)
+
+### Fleet Buses (`/api/v1/buses`)
+
+- `POST /api/v1/buses` — Register new bus (`busNumber`, `registrationNumber`, `capacity`, optional `isActive`). **Admin only**.
+- `GET /api/v1/buses` — List fleet buses with pagination, optional `search` (busNumber/registrationNumber) and `isActive` filter. **Authenticated**.
+- `GET /api/v1/buses/:id` — Get bus details and current active trip status by ID. **Authenticated**.
+- `PATCH /api/v1/buses/:id` — Update bus capacity, registration, or active status. **Admin only**.
+- `DELETE /api/v1/buses/:id` — Delete bus (rejected if historical trips exist). **Admin only**.
+
+### Bus Stops (`/api/v1/stops`)
+
+- `POST /api/v1/stops` — Create bus stop (`name`, `code`, `latitude`, `longitude`, optional `geofenceRadiusMeters`). **Admin only**.
+- `GET /api/v1/stops` — List bus stops with pagination and search. **Authenticated**.
+- `GET /api/v1/stops/:id` — Get stop details by ID. **Authenticated**.
+- `PATCH /api/v1/stops/:id` — Update stop name, code, coordinates, or geofence radius. **Admin only**.
+- `DELETE /api/v1/stops/:id` — Delete stop (rejected if assigned to routes or subscribed to by students). **Admin only**.
+
+### Routes & Stop Sequencing (`/api/v1/routes`)
+
+- `POST /api/v1/routes` — Create bus route (`name`, `code`, optional `description`, optional `isActive`). **Admin only**.
+- `GET /api/v1/routes` — List routes with pagination, search, and stop counts. **Authenticated**.
+- `GET /api/v1/routes/:id` — Get route details with ordered sequential stops. **Authenticated**.
+- `PATCH /api/v1/routes/:id` — Update route name, code, description, or status. **Admin only**.
+- `DELETE /api/v1/routes/:id` — Delete route (rejected if trips exist). **Admin only**.
+- `POST /api/v1/routes/:id/stops` — Assign and order sequential stops (`stops: [{ stopId, sequenceOrder, estimatedMinutesFromStart }]`). **Admin only**.
+- `GET /api/v1/routes/:id/stops` — Get ordered list of stops along the route. **Authenticated**.
+
+### Driver Management (`/api/v1/drivers`)
+
+- `GET /api/v1/drivers` — List drivers with pagination, search, and active trip status. **Admin only**.
+- `GET /api/v1/drivers/me` — Retrieve current authenticated driver profile and assignments. **Driver only**.
+- `GET /api/v1/drivers/:id` — Get driver profile by ID. **Admin or driver owner**.
+- `PATCH /api/v1/drivers/:id` — Update driver profile (`name`, `phone`, `licenseNumber` [admin only]).
+
+### Student Directory (`/api/v1/students`)
+
+- `GET /api/v1/students` — List students with pagination and search (`name`, `usn`, `email`). **Admin only**.
+- `GET /api/v1/students/me` — Retrieve current student profile and active stop subscriptions. **Student only**.
+- `GET /api/v1/students/:id` — Get student profile by ID. **Admin or student owner**.
+- `PATCH /api/v1/students/:id` — Update student contact details (`name`, `phone`).
+
+### Route Subscriptions (`/api/v1/subscriptions`)
+
+- `POST /api/v1/subscriptions` — Subscribe student to a specific stop on a route (`routeId`, `stopId`). Validates that stop belongs to the route.
+- `GET /api/v1/subscriptions` — List subscriptions (Students view theirs; Admins can filter by `studentId`, `routeId`, `stopId`).
+- `DELETE /api/v1/subscriptions/:id` — Cancel/remove subscription. **Admin or student owner**.
