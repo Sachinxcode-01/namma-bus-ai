@@ -1,0 +1,10 @@
+{
+  "name": "@nammabus/student-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NammaBus AI Flutter Mobile App for College Students",
+  "scripts": {
+    "test": "flutter test",
+    "analyze": "flutter analyze"
+  }
+}
