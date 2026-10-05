@@ -1,0 +1,10 @@
+{
+  "name": "@nammabus/driver-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NammaBus AI Flutter Driver Mobile Application",
+  "scripts": {
+    "test": "flutter test",
+    "analyze": "flutter analyze"
+  }
+}
