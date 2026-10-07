@@ -48,3 +48,9 @@ export class ForbiddenException extends AppException {
     super('FORBIDDEN', message, HttpStatus.FORBIDDEN);
   }
 }
+
+export class TooManyRequestsException extends AppException {
+  constructor(message = 'Too many requests. Please try again later.', details?: unknown) {
+    super('TOO_MANY_REQUESTS', message, HttpStatus.TOO_MANY_REQUESTS, details);
+  }
+}
