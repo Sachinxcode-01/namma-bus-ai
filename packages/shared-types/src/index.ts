@@ -176,6 +176,29 @@ export interface LiveLocationEntity {
   timestamp: string;
 }
 
+export enum EtaStatus {
+  AVAILABLE = 'AVAILABLE',
+  APPROACHING = 'APPROACHING',
+  STOP_PASSED = 'STOP_PASSED',
+  STALE = 'STALE',
+  NO_ACTIVE_TRIP = 'NO_ACTIVE_TRIP',
+  INSUFFICIENT_DATA = 'INSUFFICIENT_DATA',
+  GPS_UNAVAILABLE = 'GPS_UNAVAILABLE',
+}
+
+export enum EtaConfidence {
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+}
+
+export interface NextStopSummary {
+  stopId: string;
+  stopName: string;
+  stopCode: string;
+  sequenceOrder: number;
+}
+
 export interface StopEtaDto {
   stopId: string;
   stopName: string;
@@ -196,6 +219,28 @@ export interface TripEtaResponse {
   lastUpdated: string;
   currentDelayMinutes: number;
   stops: StopEtaDto[];
+  stopId?: string;
+  etaMinutes?: number;
+  estimatedArrivalTime?: string;
+  distanceRemainingMeters?: number;
+  nextStop?: NextStopSummary | null;
+  status?: EtaStatus;
+  confidence?: EtaConfidence;
+  calculatedAt?: string;
+}
+
+export interface TripEtaBroadcastEvent {
+  tripId: string;
+  busId: string;
+  routeId: string;
+  stopId?: string;
+  etaMinutes: number;
+  estimatedArrivalTime: string;
+  status: EtaStatus;
+  confidence: EtaConfidence;
+  calculatedAt: string;
+  nextStop?: NextStopSummary | null;
+  distanceRemainingMeters?: number;
 }
 
 export interface NotificationEntity {
@@ -233,9 +278,65 @@ export interface LoginResponseData {
   user: UserProfile;
 }
 
-export interface IngestLocationPayload {
+export enum BusLiveStatus {
+  TRIP_NOT_STARTED = 'TRIP_NOT_STARTED',
+  LIVE = 'LIVE',
+  STALE = 'STALE',
+  OFFLINE = 'OFFLINE',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum GpsSignalQuality {
+  EXCELLENT = 'EXCELLENT',
+  ACCEPTABLE = 'ACCEPTABLE',
+  POOR = 'POOR',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export interface LiveBusState {
   busId: string;
+  busNumber?: string;
+  tripId?: string;
+  routeId?: string;
+  routeCode?: string;
+  routeName?: string;
+  driverId?: string;
+  driverName?: string;
+  status: BusLiveStatus;
+  isStale: boolean;
+  latitude?: number;
+  longitude?: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
+  accuracyQuality: GpsSignalQuality;
+  recordedAt?: string;
+  receivedAt?: string;
+  ageSeconds?: number;
+}
+
+export interface LiveLocationBroadcastEvent {
   tripId: string;
+  busId: string;
+  routeId: string;
+  routeCode: string;
+  busNumber: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  speed: number | null;
+  heading: number | null;
+  recordedAt: string;
+  receivedAt: string;
+  status: BusLiveStatus;
+  signalQuality: GpsSignalQuality;
+  locationId: string;
+}
+
+export interface IngestLocationPayload {
+  busId?: string;
+  tripId?: string;
   latitude: number;
   longitude: number;
   speed?: number;
@@ -243,3 +344,4 @@ export interface IngestLocationPayload {
   accuracy?: number;
   timestamp: string;
 }
+

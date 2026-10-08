@@ -2,20 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { LiveLocation, Prisma } from '@prisma/client';
 
+export interface CreateLocationInput {
+  busId: string;
+  tripId: string;
+  latitude: number;
+  longitude: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
+  timestamp: Date;
+}
+
 @Injectable()
 export class LocationsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: {
-    busId: string;
-    tripId: string;
-    latitude: number;
-    longitude: number;
-    speed?: number | null;
-    heading?: number | null;
-    accuracy?: number | null;
-    timestamp: Date;
-  }): Promise<LiveLocation> {
+  async create(data: CreateLocationInput): Promise<LiveLocation> {
     return this.prisma.liveLocation.create({
       data: {
         busId: data.busId,
@@ -28,6 +30,23 @@ export class LocationsRepository {
         timestamp: data.timestamp,
       },
     });
+  }
+
+  async createMany(data: CreateLocationInput[]): Promise<number> {
+    if (data.length === 0) return 0;
+    const result = await this.prisma.liveLocation.createMany({
+      data: data.map((d) => ({
+        busId: d.busId,
+        tripId: d.tripId,
+        latitude: d.latitude,
+        longitude: d.longitude,
+        speed: d.speed ?? null,
+        heading: d.heading ?? null,
+        accuracy: d.accuracy ?? null,
+        timestamp: d.timestamp,
+      })),
+    });
+    return result.count;
   }
 
   async findLatestByTripId(tripId: string): Promise<LiveLocation | null> {

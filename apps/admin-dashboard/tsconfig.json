@@ -8,6 +8,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "esModuleInterop": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
@@ -23,5 +24,6 @@
       "@nammabus/api-client": ["../../packages/api-client/src/index.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/test"]
 }

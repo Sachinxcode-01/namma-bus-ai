@@ -11,7 +11,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { StopEvent, UserRole } from '@prisma/client';
+import { LiveLocation, StopEvent, UserRole } from '@prisma/client';
 import { TripsService } from './trips.service';
 import { TripDetail, TripStopProgress, TripSummary } from './trips.repository';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -23,13 +23,19 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { PaginatedResult } from '../users/users.service';
+import { LocationsService } from '../locations/locations.service';
+import { IngestLocationDto } from '../locations/dto/ingest-location.dto';
+import { LiveBusStateDto } from '../locations/dto/live-bus-state.dto';
 
 @ApiTags('Trips')
 @Controller('trips')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('bearer-jwt')
 export class TripsController {
-  constructor(private readonly tripsService: TripsService) {}
+  constructor(
+    private readonly tripsService: TripsService,
+    private readonly locationsService: LocationsService,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN)
@@ -67,6 +73,29 @@ export class TripsController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Trip not found' })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<TripDetail> {
     return this.tripsService.findOne(id);
+  }
+
+  @Get(':id/location')
+  @ApiOperation({
+    summary: 'Get authoritative live operational tracking state for a trip (Authenticated)',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Live trip state returned' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Trip not found' })
+  async getLiveTripLocation(@Param('id', ParseUUIDPipe) id: string): Promise<LiveBusStateDto> {
+    return this.locationsService.getLiveTripState(id);
+  }
+
+  @Post(':id/locations')
+  @Roles(UserRole.DRIVER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Ingest a GPS location ping for a trip (Driver or Admin)' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'GPS location accepted' })
+  async ingestLocation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: IngestLocationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<LiveLocation> {
+    dto.tripId = id;
+    return this.locationsService.ingest(dto, user);
   }
 
   @Patch(':id/start')

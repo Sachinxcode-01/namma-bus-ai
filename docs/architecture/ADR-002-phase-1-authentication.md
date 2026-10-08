@@ -26,9 +26,26 @@ NammaBus AI requires a secure, production-grade identity, authentication, and ro
 - **`@CurrentUser()`**: Strongly-typed decorator extracting claims from the validated JWT payload rather than trusting client-supplied IDs in request parameters or bodies.
 - **Resource Ownership**: Endpoints like `GET /api/v1/users/:id` verify that non-administrators may only query their own account.
 
-### 4. Module Boundaries & Data Isolation
-- `AuthModule` owns authentication lifecycle (`login`, `register/student`, `register/driver`, `refresh`, `logout`, `me`).
-- `UsersModule` owns user retrieval and administration (`users` listing with pagination, status toggling).
+### 4. Abuse Protection & Rate Limiting
+- **In-Memory Sliding Window**: Route-level `@RateLimit({ ttlMs, limit })` decorator paired with `RateLimitGuard`.
+- **IP Isolation**: Bucketed by client IP with automated periodic cleanup of expired buckets via non-blocking unreferenced interval timers.
+- **Telemetry**: RFC-compliant `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers. Returns HTTP 429 `TOO_MANY_REQUESTS`.
+- **Zero Additional Infrastructure**: Provides essential brute-force protection without introducing Redis complexity prematurely.
+
+### 5. Audit Logging & Secret Sanitization
+- **`AuditLogService`**: Centralized service emitting structured events to both the database `audit_logs` table and Pino structured logger.
+- **Automated Recursive Redaction**: Strictly sanitizes sensitive keys (`password`, `currentPassword`, `newPassword`, `token`, `refreshToken`, `accessToken`, `authorization`, `passwordHash`) before recording or logging to prevent credential leakage.
+
+### 6. Compromised Refresh Token Breach Mitigation
+- **Family Revocation**: If a previously revoked refresh token is presented at `/api/v1/auth/refresh`, the system identifies a token theft breach, immediately revokes ALL refresh tokens belonging to that user, records an `AUTH_TOKEN_REUSE_DETECTED` audit alert, and rejects the request.
+
+### 7. Password Management & Session Revocation
+- **Password Change**: `POST /api/v1/auth/change-password` requires the current password and validates strong complexity rules for the new password.
+- **Global Session Invalidation**: Upon changing passwords or calling `POST /api/v1/auth/logout-all`, all active refresh tokens for the user are revoked.
+
+### 8. Module Boundaries & Data Isolation
+- `AuthModule` owns authentication lifecycle (`login`, `register/student`, `register/driver`, `refresh`, `logout`, `logout-all`, `change-password`, `me`).
+- `UsersModule` owns user retrieval and administration (`users` listing with pagination, status toggling, admin-controlled user creation).
 - Direct Prisma queries are quarantined inside `AuthRepository` and `UsersRepository`. Controllers remain thin.
 
 ## Consequences
@@ -36,4 +53,5 @@ NammaBus AI requires a secure, production-grade identity, authentication, and ro
 - Zero external C++ native build tool dependencies for password hashing.
 - Immune to user enumeration: invalid emails and bad passwords return identical generic `UNAUTHORIZED` responses.
 - Refresh token database records remain unreadable even in the event of database exfiltration.
-- Comprehensive unit (35 tests) and e2e integration test coverage (21 tests).
+- Automatic mitigation against compromised refresh token replay attacks via family revocation.
+- Comprehensive unit (27 tests) and e2e integration test coverage (24 tests).

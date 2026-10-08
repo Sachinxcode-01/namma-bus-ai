@@ -1,6 +1,5 @@
 import {
   ApiResponse,
-  ApiErrorResponse,
   UserProfile,
   UserRole,
   BusEntity,
@@ -16,6 +15,7 @@ import {
   IncidentStatus,
   NotificationEntity,
   NotificationType,
+  DriverProfile,
   LoginResponseData,
   IngestLocationPayload,
 } from '@nammabus/shared-types';
@@ -118,6 +118,39 @@ const MOCK_ROUTES: RouteEntity[] = [
       createdAt: new Date().toISOString(),
       stop: s,
     })),
+  },
+];
+
+const MOCK_DRIVERS: (DriverProfile & { status?: string; assignedBus?: string })[] = [
+  {
+    id: 'drv-sim-1',
+    userId: 'usr-sim-101',
+    licenseNumber: 'KA-05-2020-0098',
+    name: 'Ramesh Kumar',
+    phone: '+91 9845012345',
+    status: 'ON_DUTY',
+    assignedBus: 'NB-01',
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+  },
+  {
+    id: 'drv-sim-2',
+    userId: 'usr-sim-102',
+    licenseNumber: 'KA-05-2018-0042',
+    name: 'Suresh Gowda',
+    phone: '+91 9845098765',
+    status: 'STANDBY',
+    assignedBus: 'NB-02',
+    createdAt: new Date(Date.now() - 120 * 86400000).toISOString(),
+  },
+  {
+    id: 'drv-sim-3',
+    userId: 'usr-sim-103',
+    licenseNumber: 'KA-05-2022-0311',
+    name: 'Anand Murthy',
+    phone: '+91 9845054321',
+    status: 'OFF_DUTY',
+    assignedBus: 'Unassigned',
+    createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
   },
 ];
 
@@ -450,6 +483,24 @@ export class ApiClient {
       return mockNotifications as unknown as T;
     }
 
+    // Drivers
+    if (path === '/drivers') {
+      return MOCK_DRIVERS as unknown as T;
+    }
+    if (path.startsWith('/drivers/') && method === 'PATCH') {
+      const driverId = path.split('/')[2];
+      const found = MOCK_DRIVERS.find((d) => d.id === driverId);
+      if (found) {
+        Object.assign(found, body);
+        return found as unknown as T;
+      }
+    }
+
+    // Incidents update
+    if (path.startsWith('/incidents/') && method === 'PATCH') {
+      return { id: path.split('/')[2], ...body } as unknown as T;
+    }
+
     return {} as unknown as T;
   }
 
@@ -469,22 +520,83 @@ export class ApiClient {
 
   public buses = {
     list: () => this.request<BusEntity[]>('/buses'),
+    getById: (busId: string) => this.request<BusEntity>(`/buses/${busId}`),
+    create: (data: Partial<BusEntity>) =>
+      this.request<BusEntity>('/buses', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (busId: string, data: Partial<BusEntity>) =>
+      this.request<BusEntity>(`/buses/${busId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (busId: string) =>
+      this.request<{ deleted: boolean; id: string }>(`/buses/${busId}`, {
+        method: 'DELETE',
+      }),
     getLiveLocation: (busId: string) =>
       this.request<LiveLocationEntity>(`/buses/${busId}/live-location`),
   };
 
+  public drivers = {
+    list: () => this.request<(DriverProfile & { status?: string; assignedBus?: string })[]>('/drivers'),
+    getById: (driverId: string) => this.request<DriverProfile>(`/drivers/${driverId}`),
+    update: (driverId: string, data: Partial<DriverProfile & { status?: string; assignedBus?: string }>) =>
+      this.request<DriverProfile>(`/drivers/${driverId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+  };
+
   public routes = {
     list: () => this.request<RouteEntity[]>('/routes'),
+    getById: (routeId: string) => this.request<RouteEntity>(`/routes/${routeId}`),
     getStops: (routeId: string) => this.request<StopEntity[]>(`/routes/${routeId}/stops`),
+    create: (data: Partial<RouteEntity>) =>
+      this.request<RouteEntity>('/routes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (routeId: string, data: Partial<RouteEntity>) =>
+      this.request<RouteEntity>(`/routes/${routeId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (routeId: string) =>
+      this.request<{ deleted: boolean; id: string }>(`/routes/${routeId}`, {
+        method: 'DELETE',
+      }),
   };
 
   public stops = {
     list: () => this.request<StopEntity[]>('/stops'),
+    getById: (stopId: string) => this.request<StopEntity>(`/stops/${stopId}`),
+    create: (data: Partial<StopEntity>) =>
+      this.request<StopEntity>('/stops', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (stopId: string, data: Partial<StopEntity>) =>
+      this.request<StopEntity>(`/stops/${stopId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (stopId: string) =>
+      this.request<{ deleted: boolean; id: string }>(`/stops/${stopId}`, {
+        method: 'DELETE',
+      }),
   };
 
   public trips = {
     list: () => this.request<TripEntity[]>('/trips'),
+    findActive: () => this.request<TripEntity[]>('/trips/active'),
     getById: (tripId: string) => this.request<TripEntity>(`/trips/${tripId}`),
+    create: (data: { busId: string; driverId: string; routeId: string; scheduledStartTime?: string }) =>
+      this.request<TripEntity>('/trips', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     start: (tripId: string) =>
       this.request<TripEntity>(`/trips/${tripId}/start`, { method: 'POST' }),
     end: (tripId: string) =>
@@ -505,6 +617,11 @@ export class ApiClient {
     create: (data: Partial<IncidentEntity>) =>
       this.request<IncidentEntity>('/incidents', {
         method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (incidentId: string, data: Partial<IncidentEntity>) =>
+      this.request<IncidentEntity>(`/incidents/${incidentId}`, {
+        method: 'PATCH',
         body: JSON.stringify(data),
       }),
   };

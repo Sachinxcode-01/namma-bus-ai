@@ -93,8 +93,18 @@ describe('Authentication & User Management (e2e)', () => {
         if (where.tokenHash && refreshTokensDb[where.tokenHash]) {
           refreshTokensDb[where.tokenHash].revokedAt = data.revokedAt;
         }
+        if (where.userId) {
+          for (const token of Object.values(refreshTokensDb)) {
+            if (token.userId === where.userId) {
+              token.revokedAt = data.revokedAt;
+            }
+          }
+        }
         return { count: 1 };
       }),
+    },
+    auditLog: {
+      create: jest.fn().mockResolvedValue({ id: 'audit-id' }),
     },
     $transaction: jest.fn(async (cb) => cb(mockPrismaService)),
   };
@@ -108,8 +118,9 @@ describe('Authentication & User Management (e2e)', () => {
 
     // Pre-seed an admin user for RBAC tests
     const adminHash = await passwordHasher.hash('AdminPass123!');
-    usersDb['admin-uuid'] = {
-      id: 'admin-uuid',
+    const adminId = '00000000-0000-4000-8000-000000000001';
+    usersDb[adminId] = {
+      id: adminId,
       email: 'admin@college.edu',
       passwordHash: adminHash,
       role: UserRole.ADMIN,
@@ -346,6 +357,129 @@ describe('Authentication & User Management (e2e)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('Token Reuse Detection (POST /api/v1/auth/refresh)', () => {
+    it('should detect reuse of already revoked refresh token and reject with 401', async () => {
+      // studentRefreshToken was revoked in the logout test above
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: studentRefreshToken });
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('UNAUTHORIZED');
+    });
+  });
+
+  describe('Password Change Flow (POST /api/v1/auth/change-password)', () => {
+    it('should reject unauthenticated password change request (401)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/change-password')
+        .send({
+          currentPassword: 'Password123!',
+          newPassword: 'BrandNewPass2026@',
+        });
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should reject password change with incorrect current password (401)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/change-password')
+        .set('Authorization', `Bearer ${studentAccessToken}`)
+        .send({
+          currentPassword: 'WrongCurrentPassword!',
+          newPassword: 'BrandNewPass2026@',
+        });
+
+      expect(response.status).toBe(401);
+      expect(response.body.error.message).toContain('Current password verification failed');
+    });
+
+    it('should reject password change when new password is identical to current (400)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/change-password')
+        .set('Authorization', `Bearer ${studentAccessToken}`)
+        .send({
+          currentPassword: 'Password123!',
+          newPassword: 'Password123!',
+        });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should successfully change password and invalidate active sessions', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/change-password')
+        .set('Authorization', `Bearer ${studentAccessToken}`)
+        .send({
+          currentPassword: 'Password123!',
+          newPassword: 'BrandNewPass2026@',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.message).toContain('Password changed successfully');
+    });
+  });
+
+  describe('Logout All Sessions (POST /api/v1/auth/logout-all)', () => {
+    it('should revoke all active user sessions and refresh tokens', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/logout-all')
+        .set('Authorization', `Bearer ${studentAccessToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.message).toContain(
+        'All active sessions have been successfully revoked',
+      );
+    });
+  });
+
+  describe('Admin User Provisioning & IDOR Ownership', () => {
+    it('should allow admin to provision a new driver user (POST /api/v1/users)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          email: 'driver.manjunath@college.edu',
+          password: 'DriverPass2026!',
+          role: UserRole.DRIVER,
+          name: 'Manjunath Gowda',
+          licenseNumber: 'KA-04-2018-9876543',
+          phone: '+919876543222',
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('email', 'driver.manjunath@college.edu');
+      expect(response.body.data).toHaveProperty('role', UserRole.DRIVER);
+    });
+
+    it('should forbid non-admin from creating users (POST /api/v1/users)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/users')
+        .set('Authorization', `Bearer ${studentAccessToken}`)
+        .send({
+          email: 'rogue@college.edu',
+          password: 'RoguePass2026!',
+          role: UserRole.ADMIN,
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('should prevent student from accessing another user profile (IDOR prevention)', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/users/00000000-0000-4000-8000-000000000001')
+        .set('Authorization', `Bearer ${studentAccessToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
     });
   });
 });

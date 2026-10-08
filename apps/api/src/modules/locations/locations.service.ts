@@ -1,9 +1,15 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { LiveLocation, TripStatus, UserRole } from '@prisma/client';
 import { LocationsRepository } from './locations.repository';
 import { TripsRepository } from '../trips/trips.repository';
 import { LocationStreamService } from './location-stream.service';
+import { GpsValidatorService } from './services/gps-validator.service';
+import { GpsDeduplicationService } from './services/gps-deduplication.service';
+import { LiveTrackingService } from './services/live-tracking.service';
+import { GpsMetricsService, GpsMetricsSnapshot } from './services/gps-metrics.service';
+import { EtaService } from '../eta/eta.service';
 import { IngestLocationDto } from './dto/ingest-location.dto';
+import { BatchIngestLocationDto } from './dto/batch-ingest-location.dto';
 import { QueryLocationHistoryDto } from './dto/query-location-history.dto';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import {
@@ -12,67 +18,67 @@ import {
   NotFoundException,
   ValidationException,
 } from '../../common/errors/app.exception';
-import { haversineDistance } from '../../common/utils/geo.util';
+import {
+  BatchIngestResult,
+  BusLiveStatus,
+  GpsMovementClassification,
+  LiveBusState,
+} from './domain/gps-telemetry.types';
 
 @Injectable()
 export class LocationsService {
   private readonly logger = new Logger(LocationsService.name);
 
-  // Maximum allowed vehicle velocity threshold (120 km/h)
-  private readonly MAX_PLAUSIBLE_SPEED_KMH = 120;
-  // Maximum allowed teleportation jump speed threshold (160 km/h)
-  private readonly MAX_TELEPORT_SPEED_KMH = 160;
-  // Maximum allowed future timestamp skew (60 seconds)
-  private readonly MAX_FUTURE_SKEW_MS = 60 * 1000;
-  // Maximum allowed stale timestamp age (10 minutes)
-  private readonly MAX_STALE_AGE_MS = 10 * 60 * 1000;
-
   constructor(
     private readonly locationsRepository: LocationsRepository,
     private readonly tripsRepository: TripsRepository,
     private readonly streamService: LocationStreamService,
+    private readonly validatorService: GpsValidatorService,
+    private readonly deduplicationService: GpsDeduplicationService,
+    private readonly liveTrackingService: LiveTrackingService,
+    private readonly metricsService: GpsMetricsService,
+    @Optional()
+    @Inject(forwardRef(() => EtaService))
+    private readonly etaService?: EtaService,
   ) {}
 
+  /**
+   * Authoritative GPS Ingestion Workflow
+   * Coordinates validation, driver ownership, deduplication, persistence, and real-time streaming.
+   */
   async ingest(dto: IngestLocationDto, currentUser: AuthenticatedUser): Promise<LiveLocation> {
-    // 1. Boundary & Plausibility Validation
-    if (dto.latitude < -90 || dto.latitude > 90 || dto.longitude < -180 || dto.longitude > 180) {
-      throw new ValidationException(
-        'Coordinates outside valid geographic limits [-90..90, -180..180].',
-      );
+    this.metricsService.recordReceived();
+
+    // 0. Auto-resolve Active Trip if Driver Omitted tripId
+    let tripId = dto.tripId;
+    if (!tripId) {
+      if (currentUser.driverId) {
+        const activeTripsResult = await this.tripsRepository.findAll({
+          driverId: currentUser.driverId,
+          status: TripStatus.ACTIVE,
+        });
+        const activeTrip = activeTripsResult.items?.[0] ?? activeTripsResult.trips?.[0];
+        if (activeTrip) {
+          tripId = activeTrip.id;
+        }
+      }
+      if (!tripId) {
+        this.metricsService.recordRejected();
+        throw new ValidationException(
+          'tripId is required or driver must be assigned to an active trip.',
+        );
+      }
     }
 
-    if (dto.accuracy !== undefined && dto.accuracy < 0) {
-      throw new ValidationException('Accuracy metric cannot be negative.');
-    }
-
-    if (dto.speed !== undefined && dto.speed > this.MAX_PLAUSIBLE_SPEED_KMH) {
-      throw new ValidationException(
-        `Reported speed (${dto.speed} km/h) exceeds maximum plausible threshold (${this.MAX_PLAUSIBLE_SPEED_KMH} km/h).`,
-      );
-    }
-
-    // 2. Timestamp Freshness and Skew Verification
-    const pingTime = new Date(dto.timestamp);
-    const now = Date.now();
-    const diffMs = pingTime.getTime() - now;
-
-    if (diffMs > this.MAX_FUTURE_SKEW_MS) {
-      throw new ValidationException(
-        'GPS ping timestamp is in the future (> 60 seconds clock skew).',
-      );
-    }
-
-    if (now - pingTime.getTime() > this.MAX_STALE_AGE_MS) {
-      throw new ValidationException('GPS ping timestamp is too stale (> 10 minutes old).');
-    }
-
-    // 3. Verify Trip Existence and Active Status
-    const trip = await this.tripsRepository.findById(dto.tripId);
+    // 1. Verify Trip Existence and Active Status
+    const trip = await this.tripsRepository.findById(tripId);
     if (!trip) {
-      throw new NotFoundException('Trip', dto.tripId);
+      this.metricsService.recordRejected();
+      throw new NotFoundException('Trip', tripId);
     }
 
     if (trip.status !== TripStatus.ACTIVE) {
+      this.metricsService.recordRejected();
       throw new AppException(
         'INVALID_TRIP_STATE',
         `Location pings can only be ingested for ACTIVE trips. Current status: ${trip.status}`,
@@ -80,51 +86,52 @@ export class LocationsService {
       );
     }
 
-    // 4. Authorization / Ownership Verification
+    // 2. Authorization / Ownership Verification
     if (currentUser.role === UserRole.DRIVER && currentUser.driverId !== trip.driverId) {
+      this.metricsService.recordRejected();
       throw new ForbiddenException(
         'Drivers may only ingest GPS locations for trips assigned to them.',
       );
     }
 
-    // 5. Jump / Teleportation Anomaly Detection
-    const latestLocation = await this.locationsRepository.findLatestByTripId(dto.tripId);
-    if (latestLocation) {
-      const elapsedSeconds = (pingTime.getTime() - latestLocation.timestamp.getTime()) / 1000;
-      if (elapsedSeconds <= 0) {
-        throw new ValidationException(
-          'GPS ping timestamp must be newer than the latest recorded location for this trip.',
-        );
-      }
-
-      if (elapsedSeconds < 120) {
-        const distanceMeters = haversineDistance(
-          latestLocation.latitude,
-          latestLocation.longitude,
-          dto.latitude,
-          dto.longitude,
-        );
-        const calculatedSpeedKmh = (distanceMeters / elapsedSeconds) * 3.6;
-
-        if (calculatedSpeedKmh > this.MAX_TELEPORT_SPEED_KMH) {
-          this.logger.warn(
-            `Teleportation anomaly detected on trip ${dto.tripId}: calculated velocity ${calculatedSpeedKmh.toFixed(
-              1,
-            )} km/h over ${distanceMeters.toFixed(1)}m in ${elapsedSeconds.toFixed(1)}s`,
-          );
-          throw new ValidationException(
-            `Implausible geographic jump detected (teleportation anomaly: calculated speed ${calculatedSpeedKmh.toFixed(
-              1,
-            )} km/h exceeds ${this.MAX_TELEPORT_SPEED_KMH} km/h threshold).`,
-          );
-        }
-      }
+    // 3. Vehicle Association Integrity (if busId supplied)
+    if (dto.busId && dto.busId !== trip.busId) {
+      this.metricsService.recordRejected();
+      throw new ValidationException(
+        `Vehicle mismatch: provided busId (${dto.busId}) does not match the bus assigned to this trip (${trip.busId}).`,
+      );
     }
 
-    // 6. Ingest & Persist
+    // 4. Retrieve latest recorded location for comparative anomaly detection
+    const latestLocation = await this.locationsRepository.findLatestByTripId(tripId);
+
+    // 5. Deduplication check (handle duplicate mobile network retries idempotently)
+    const pingTime = new Date(dto.timestamp);
+    const dedup = this.deduplicationService.check(tripId, dto.latitude, dto.longitude, pingTime);
+
+    if (dedup.isDuplicate && latestLocation) {
+      this.metricsService.recordDuplicate();
+      this.logger.debug(`Idempotent duplicate GPS ping suppressed for trip ${tripId}`);
+      return latestLocation;
+    }
+
+    // 6. Comprehensive Validation Pipeline (Coordinates, Timestamp, Accuracy, Teleportation)
+    let validationResult;
+    try {
+      validationResult = this.validatorService.validatePayload(dto, latestLocation);
+    } catch (err) {
+      this.metricsService.recordRejected();
+      throw err;
+    }
+
+    if (validationResult.classification === GpsMovementClassification.SUSPICIOUS) {
+      this.metricsService.recordSuspicious();
+    }
+
+    // 7. Persist Validated Telemetry Record
     const location = await this.locationsRepository.create({
       busId: trip.busId,
-      tripId: dto.tripId,
+      tripId,
       latitude: dto.latitude,
       longitude: dto.longitude,
       speed: dto.speed,
@@ -133,14 +140,118 @@ export class LocationsService {
       timestamp: pingTime,
     });
 
-    // 7. Emit to Real-time Stream
-    this.streamService.emitLocation({
-      ...location,
-      busNumber: trip.bus?.busNumber,
-      routeCode: trip.route?.code,
+    this.metricsService.recordAccepted();
+
+    // 8. Distribute Real-Time Event (unless stationary micro-jitter suppressed)
+    if (!dedup.isJitterSuppressed) {
+      this.streamService.emitLocation({
+        tripId: trip.id,
+        busId: trip.busId,
+        routeId: trip.routeId,
+        routeCode: trip.route?.code ?? '',
+        busNumber: trip.bus?.busNumber ?? '',
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy,
+        speed: location.speed,
+        heading: location.heading,
+        recordedAt: location.timestamp.toISOString(),
+        receivedAt: location.createdAt.toISOString(),
+        status: BusLiveStatus.LIVE,
+        signalQuality: validationResult.signalQuality,
+        locationId: location.id,
+      });
+    }
+
+    // 9. Update Live Operational State Cache
+    this.liveTrackingService.updateCache(trip.id, {
+      tripId: trip.id,
+      busId: trip.busId,
+      busNumber: trip.bus?.busNumber ?? '',
+      routeId: trip.routeId,
+      routeCode: trip.route?.code ?? '',
+      driverId: trip.driverId,
+      driverName: trip.driver?.name ?? '',
+      status: BusLiveStatus.LIVE,
+      isStale: false,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      speed: location.speed,
+      heading: location.heading,
+      accuracy: location.accuracy,
+      accuracyQuality: validationResult.signalQuality,
+      recordedAt: location.timestamp.toISOString(),
+      receivedAt: location.createdAt.toISOString(),
+      ageSeconds: 0,
+      currentLocation: {
+        id: location.id,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        speed: location.speed,
+        heading: location.heading,
+        accuracy: location.accuracy,
+        timestamp: location.timestamp.toISOString(),
+        receivedAt: location.createdAt.toISOString(),
+      },
+      lastLocationAt: location.timestamp.toISOString(),
+      updateAgeSeconds: 0,
+      speedKmh: location.speed ?? null,
+      accuracyMeters: location.accuracy ?? null,
+      signalQuality: validationResult.signalQuality,
+      isMoving: location.speed !== null && (location.speed ?? 0) > 2.0,
     });
 
+    // 10. Asynchronously update ETA prediction state in the background (fire-and-forget, non-blocking)
+    if (this.etaService) {
+      this.etaService
+        .recalculateAndBroadcast(trip.id)
+        .catch((err) =>
+          this.logger.debug(`Background ETA recalculation error: ${err?.message ?? err}`),
+        );
+    }
+
     return location;
+  }
+
+  /**
+   * Ingest a batch of buffered GPS telemetry pings accumulated during offline periods.
+   * Persists historical breadcrumbs chronologically and updates current state only to the latest ping.
+   */
+  async ingestBatch(
+    dto: BatchIngestLocationDto,
+    currentUser: AuthenticatedUser,
+  ): Promise<BatchIngestResult> {
+    const sorted = [...dto.locations].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+
+    let acceptedCount = 0;
+    let rejectedCount = 0;
+    let latestLocation: LiveLocation | null = null;
+
+    for (const ping of sorted) {
+      try {
+        const result = await this.ingest(ping, currentUser);
+        acceptedCount++;
+        latestLocation = result;
+      } catch (error) {
+        rejectedCount++;
+        this.logger.warn(
+          `Failed to ingest ping in batch for trip ${ping.tripId}: ${(error as Error).message}`,
+        );
+      }
+    }
+
+    const latestStatus = latestLocation ? BusLiveStatus.LIVE : BusLiveStatus.OFFLINE;
+
+    return {
+      totalReceived: dto.locations.length,
+      acceptedCount,
+      ingestedCount: acceptedCount,
+      rejectedCount,
+      latestStatus,
+      latestLocation,
+    };
   }
 
   async getLatestByTripId(tripId: string): Promise<LiveLocation> {
@@ -166,6 +277,22 @@ export class LocationsService {
     return latest;
   }
 
+  async getLiveStateByTripId(tripId: string): Promise<LiveBusState> {
+    return this.liveTrackingService.getLiveTripState(tripId);
+  }
+
+  async getLiveTripState(tripId: string): Promise<LiveBusState> {
+    return this.liveTrackingService.getLiveTripState(tripId);
+  }
+
+  async getLiveStateByBusId(busId: string): Promise<LiveBusState> {
+    return this.liveTrackingService.getLiveBusState(busId);
+  }
+
+  async getLiveBusState(busId: string): Promise<LiveBusState> {
+    return this.liveTrackingService.getLiveBusState(busId);
+  }
+
   async getHistoryByTripId(
     tripId: string,
     query: QueryLocationHistoryDto,
@@ -177,5 +304,26 @@ export class LocationsService {
 
     const since = query.since ? new Date(query.since) : undefined;
     return this.locationsRepository.findHistoryByTripId(tripId, query.limit, since);
+  }
+
+  getMetrics(): GpsMetricsSnapshot {
+    return this.metricsService.getMetricsSnapshot();
+  }
+
+  getHealthMetrics(): {
+    activeConnections: number;
+    activeTripsTracked: number;
+    totalPingsAccepted: number;
+    totalPingsRejected: number;
+    [key: string]: unknown;
+  } {
+    const liveMetrics = this.liveTrackingService.getMetrics();
+    return {
+      activeConnections: this.streamService.getActiveConnectionCount(),
+      activeTripsTracked: liveMetrics.activeTripsTracked,
+      totalPingsAccepted: liveMetrics.totalPingsAccepted,
+      totalPingsRejected: liveMetrics.totalPingsRejected,
+      ...this.metricsService.getMetricsSnapshot(),
+    };
   }
 }

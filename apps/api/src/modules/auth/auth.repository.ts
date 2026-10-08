@@ -135,6 +135,29 @@ export class AuthRepository {
     return token;
   }
 
+  async findRefreshToken(
+    tokenHash: string,
+  ): Promise<(RefreshToken & { user: UserWithProfile }) | null> {
+    return this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          include: {
+            student: true,
+            driver: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
   async revokeRefreshToken(tokenHash: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: {

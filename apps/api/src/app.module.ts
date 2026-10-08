@@ -14,6 +14,7 @@ import { StudentsModule } from './modules/students/students.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { TripsModule } from './modules/trips/trips.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { EtaModule } from './modules/eta/eta.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -36,6 +37,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     SubscriptionsModule,
     TripsModule,
     LocationsModule,
+    EtaModule,
   ],
 })
 export class AppModule implements NestModule {
