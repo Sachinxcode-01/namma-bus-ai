@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { LiveLocation, TripStatus, UserRole } from '@prisma/client';
 import { LocationsRepository } from './locations.repository';
 import { TripsRepository } from '../trips/trips.repository';
@@ -7,6 +7,7 @@ import { GpsValidatorService } from './services/gps-validator.service';
 import { GpsDeduplicationService } from './services/gps-deduplication.service';
 import { LiveTrackingService } from './services/live-tracking.service';
 import { GpsMetricsService, GpsMetricsSnapshot } from './services/gps-metrics.service';
+import { EtaService } from '../eta/eta.service';
 import { IngestLocationDto } from './dto/ingest-location.dto';
 import { BatchIngestLocationDto } from './dto/batch-ingest-location.dto';
 import { QueryLocationHistoryDto } from './dto/query-location-history.dto';
@@ -36,6 +37,9 @@ export class LocationsService {
     private readonly deduplicationService: GpsDeduplicationService,
     private readonly liveTrackingService: LiveTrackingService,
     private readonly metricsService: GpsMetricsService,
+    @Optional()
+    @Inject(forwardRef(() => EtaService))
+    private readonly etaService?: EtaService,
   ) {}
 
   /**
@@ -196,6 +200,15 @@ export class LocationsService {
       signalQuality: validationResult.signalQuality,
       isMoving: location.speed !== null && (location.speed ?? 0) > 2.0,
     });
+
+    // 10. Asynchronously update ETA prediction state in the background (fire-and-forget, non-blocking)
+    if (this.etaService) {
+      this.etaService
+        .recalculateAndBroadcast(trip.id)
+        .catch((err) =>
+          this.logger.debug(`Background ETA recalculation error: ${err?.message ?? err}`),
+        );
+    }
 
     return location;
   }

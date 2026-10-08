@@ -176,6 +176,29 @@ export interface LiveLocationEntity {
   timestamp: string;
 }
 
+export enum EtaStatus {
+  AVAILABLE = 'AVAILABLE',
+  APPROACHING = 'APPROACHING',
+  STOP_PASSED = 'STOP_PASSED',
+  STALE = 'STALE',
+  NO_ACTIVE_TRIP = 'NO_ACTIVE_TRIP',
+  INSUFFICIENT_DATA = 'INSUFFICIENT_DATA',
+  GPS_UNAVAILABLE = 'GPS_UNAVAILABLE',
+}
+
+export enum EtaConfidence {
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+}
+
+export interface NextStopSummary {
+  stopId: string;
+  stopName: string;
+  stopCode: string;
+  sequenceOrder: number;
+}
+
 export interface StopEtaDto {
   stopId: string;
   stopName: string;
@@ -196,6 +219,28 @@ export interface TripEtaResponse {
   lastUpdated: string;
   currentDelayMinutes: number;
   stops: StopEtaDto[];
+  stopId?: string;
+  etaMinutes?: number;
+  estimatedArrivalTime?: string;
+  distanceRemainingMeters?: number;
+  nextStop?: NextStopSummary | null;
+  status?: EtaStatus;
+  confidence?: EtaConfidence;
+  calculatedAt?: string;
+}
+
+export interface TripEtaBroadcastEvent {
+  tripId: string;
+  busId: string;
+  routeId: string;
+  stopId?: string;
+  etaMinutes: number;
+  estimatedArrivalTime: string;
+  status: EtaStatus;
+  confidence: EtaConfidence;
+  calculatedAt: string;
+  nextStop?: NextStopSummary | null;
+  distanceRemainingMeters?: number;
 }
 
 export interface NotificationEntity {

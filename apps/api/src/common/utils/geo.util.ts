@@ -75,3 +75,105 @@ export function isWithinGeofence(
   const distance = haversineDistance(currentLat, currentLon, targetLat, targetLon);
   return distance <= radiusMeters;
 }
+
+export interface SegmentProjectionResult {
+  fraction: number;
+  projectedLat: number;
+  projectedLon: number;
+  perpendicularDistanceMeters: number;
+  remainingSegmentDistanceMeters: number;
+}
+
+/**
+ * Projects a geographic point onto a line segment defined by two coordinates.
+ * Returns the fractional progress t in [0, 1], projected coordinate, perpendicular distance,
+ * and distance remaining from the projected point to the segment end.
+ */
+export function projectPointOnSegment(
+  pointLat: number,
+  pointLon: number,
+  startLat: number,
+  startLon: number,
+  endLat: number,
+  endLon: number,
+): SegmentProjectionResult {
+  const segmentLengthMeters = haversineDistance(startLat, startLon, endLat, endLon);
+  if (segmentLengthMeters < 0.1) {
+    return {
+      fraction: 0,
+      projectedLat: startLat,
+      projectedLon: startLon,
+      perpendicularDistanceMeters: haversineDistance(pointLat, pointLon, startLat, startLon),
+      remainingSegmentDistanceMeters: 0,
+    };
+  }
+
+  const midLatRad = ((startLat + endLat) / 2) * (Math.PI / 180);
+  const metersPerLatDeg = (EARTH_RADIUS_METERS * Math.PI) / 180;
+  const metersPerLonDeg = metersPerLatDeg * Math.cos(midLatRad);
+
+  const dx = (endLon - startLon) * metersPerLonDeg;
+  const dy = (endLat - startLat) * metersPerLatDeg;
+  const segLenSq = dx * dx + dy * dy;
+
+  if (segLenSq === 0) {
+    return {
+      fraction: 0,
+      projectedLat: startLat,
+      projectedLon: startLon,
+      perpendicularDistanceMeters: haversineDistance(pointLat, pointLon, startLat, startLon),
+      remainingSegmentDistanceMeters: 0,
+    };
+  }
+
+  const pdx = (pointLon - startLon) * metersPerLonDeg;
+  const pdy = (pointLat - startLat) * metersPerLatDeg;
+
+  let fraction = (pdx * dx + pdy * dy) / segLenSq;
+  fraction = Math.max(0, Math.min(1, fraction));
+
+  const projectedLat = startLat + fraction * (endLat - startLat);
+  const projectedLon = startLon + fraction * (endLon - startLon);
+
+  const perpendicularDistanceMeters = haversineDistance(
+    pointLat,
+    pointLon,
+    projectedLat,
+    projectedLon,
+  );
+  const remainingSegmentDistanceMeters = haversineDistance(
+    projectedLat,
+    projectedLon,
+    endLat,
+    endLon,
+  );
+
+  return {
+    fraction,
+    projectedLat,
+    projectedLon,
+    perpendicularDistanceMeters,
+    remainingSegmentDistanceMeters,
+  };
+}
+
+/**
+ * Computes the cumulative distance along an ordered sequence of coordinates in meters.
+ */
+export function computePolylineDistanceMeters(
+  points: Array<{ latitude: number; longitude: number }>,
+): number {
+  if (points.length < 2) {
+    return 0;
+  }
+  let totalDistance = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    totalDistance += haversineDistance(
+      points[i].latitude,
+      points[i].longitude,
+      points[i + 1].latitude,
+      points[i + 1].longitude,
+    );
+  }
+  return totalDistance;
+}
