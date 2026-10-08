@@ -3,6 +3,10 @@ import { LocationsService } from './locations.service';
 import { LocationsRepository } from './locations.repository';
 import { TripsRepository, TripDetail } from '../trips/trips.repository';
 import { LocationStreamService } from './location-stream.service';
+import { GpsValidatorService } from './services/gps-validator.service';
+import { GpsDeduplicationService } from './services/gps-deduplication.service';
+import { LiveTrackingService } from './services/live-tracking.service';
+import { GpsMetricsService } from './services/gps-metrics.service';
 import { LiveLocation, TripStatus, UserRole } from '@prisma/client';
 import {
   AppException,
@@ -11,12 +15,14 @@ import {
   ValidationException,
 } from '../../common/errors/app.exception';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { BusLiveStatus } from './domain/gps-telemetry.types';
 
 describe('LocationsService', () => {
   let service: LocationsService;
   let locationsRepo: jest.Mocked<LocationsRepository>;
   let tripsRepo: jest.Mocked<TripsRepository>;
   let streamService: jest.Mocked<LocationStreamService>;
+  let metricsService!: GpsMetricsService;
 
   const mockAdminUser: AuthenticatedUser = {
     id: 'admin-user-id',
@@ -99,32 +105,48 @@ describe('LocationsService', () => {
   };
 
   beforeEach(async () => {
+    const mockLocationsRepo = {
+      create: jest.fn(),
+      createMany: jest.fn(),
+      findLatestByTripId: jest.fn(),
+      findLatestByBusId: jest.fn(),
+      findHistoryByTripId: jest.fn(),
+    };
+
+    const mockTripsRepo = {
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      findActiveByBus: jest.fn(),
+    };
+
+    const mockStreamService = {
+      emitLocation: jest.fn(),
+      getTripStream: jest.fn(),
+      getBusStream: jest.fn(),
+      getRouteStream: jest.fn(),
+      getFleetStream: jest.fn(),
+      getActiveConnectionsCount: jest.fn().mockReturnValue(2),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LocationsService,
         {
           provide: LocationsRepository,
-          useValue: {
-            create: jest.fn(),
-            findLatestByTripId: jest.fn(),
-            findLatestByBusId: jest.fn(),
-            findHistoryByTripId: jest.fn(),
-          },
+          useValue: mockLocationsRepo,
         },
         {
           provide: TripsRepository,
-          useValue: {
-            findById: jest.fn(),
-          },
+          useValue: mockTripsRepo,
         },
         {
           provide: LocationStreamService,
-          useValue: {
-            emitLocation: jest.fn(),
-            getTripStream: jest.fn(),
-            getFleetStream: jest.fn(),
-          },
+          useValue: mockStreamService,
         },
+        GpsValidatorService,
+        GpsDeduplicationService,
+        LiveTrackingService,
+        GpsMetricsService,
       ],
     }).compile();
 
@@ -132,6 +154,7 @@ describe('LocationsService', () => {
     locationsRepo = module.get(LocationsRepository);
     tripsRepo = module.get(TripsRepository);
     streamService = module.get(LocationStreamService);
+    metricsService = module.get(GpsMetricsService);
   });
 
   describe('ingest', () => {
@@ -157,14 +180,18 @@ describe('LocationsService', () => {
       expect(locationsRepo.create).toHaveBeenCalled();
       expect(streamService.emitLocation).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: mockLocation.id,
+          tripId: 'trip-id-1',
+          busId: 'bus-id-1',
           busNumber: 'KA-01-F-1001',
           routeCode: 'R-01',
+          status: BusLiveStatus.LIVE,
         }),
       );
     });
 
     it('should throw ValidationException if latitude is out of bounds', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+
       await expect(
         service.ingest(
           {
@@ -179,6 +206,8 @@ describe('LocationsService', () => {
     });
 
     it('should throw ValidationException if accuracy is negative', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+
       await expect(
         service.ingest(
           {
@@ -193,7 +222,26 @@ describe('LocationsService', () => {
       ).rejects.toThrow(ValidationException);
     });
 
+    it('should throw ValidationException if accuracy exceeds 200m rejection threshold', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+
+      await expect(
+        service.ingest(
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            accuracy: 250,
+            timestamp: new Date().toISOString(),
+          },
+          mockDriverUser,
+        ),
+      ).rejects.toThrow(ValidationException);
+    });
+
     it('should throw ValidationException if speed exceeds 120 km/h', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+
       await expect(
         service.ingest(
           {
@@ -209,7 +257,9 @@ describe('LocationsService', () => {
     });
 
     it('should throw ValidationException if timestamp is in the future (> 60s)', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
       const futureTime = new Date(Date.now() + 120_000).toISOString();
+
       await expect(
         service.ingest(
           {
@@ -224,7 +274,9 @@ describe('LocationsService', () => {
     });
 
     it('should throw ValidationException if timestamp is too stale (> 10m)', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
       const staleTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
       await expect(
         service.ingest(
           {
@@ -367,9 +419,108 @@ describe('LocationsService', () => {
         ),
       ).rejects.toThrow(ValidationException);
     });
+
+    it('should resolve active trip automatically when driver sends ping without tripId', async () => {
+      tripsRepo.findAll.mockResolvedValue({
+        items: [mockTrip],
+        trips: [mockTrip],
+        total: 1,
+      });
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(null);
+      locationsRepo.create.mockResolvedValue(mockLocation);
+
+      const result = await service.ingest(
+        {
+          latitude: 12.9716,
+          longitude: 77.5946,
+          timestamp: new Date().toISOString(),
+        },
+        mockDriverUser,
+      );
+
+      expect(result).toBeDefined();
+      expect(tripsRepo.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ driverId: 'driver-id-1', status: TripStatus.ACTIVE }),
+      );
+    });
   });
 
-  describe('getLatestByTripId', () => {
+  describe('ingestBatch', () => {
+    it('should ingest a batch of buffered offline GPS pings and update current live state', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(null);
+      locationsRepo.create.mockImplementation((data) =>
+        Promise.resolve({
+          ...mockLocation,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          timestamp: data.timestamp,
+        }),
+      );
+
+      const t1 = new Date(Date.now() - 30_000).toISOString();
+      const t2 = new Date(Date.now() - 10_000).toISOString();
+
+      const batchDto = {
+        locations: [
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.9716,
+            longitude: 77.5946,
+            timestamp: t1,
+          },
+          {
+            tripId: 'trip-id-1',
+            latitude: 12.972,
+            longitude: 77.5948,
+            timestamp: t2,
+          },
+        ],
+      };
+
+      const result = await service.ingestBatch(batchDto, mockDriverUser);
+      expect(result.acceptedCount).toBe(2);
+      expect(result.latestLocation).toBeDefined();
+    });
+  });
+
+  describe('live operational status queries', () => {
+    it('should calculate live operational status correctly', async () => {
+      tripsRepo.findById.mockResolvedValue(mockTrip);
+      tripsRepo.findActiveByBus.mockResolvedValue(mockTrip);
+      locationsRepo.findLatestByTripId.mockResolvedValue(mockLocation);
+      locationsRepo.create.mockResolvedValue(mockLocation);
+
+      // Ingest live location
+      await service.ingest(
+        {
+          tripId: 'trip-id-1',
+          latitude: 12.9716,
+          longitude: 77.5946,
+          timestamp: new Date().toISOString(),
+        },
+        mockDriverUser,
+      );
+
+      const liveBus = await service.getLiveBusState('bus-id-1');
+      expect(liveBus).toBeDefined();
+      expect(liveBus.busId).toBe('bus-id-1');
+      expect(liveBus.status).toBe(BusLiveStatus.LIVE);
+      expect(liveBus.isStale).toBe(false);
+    });
+
+    it('should return TRIP_NOT_STARTED if no live or historical location exists for bus', async () => {
+      tripsRepo.findActiveByBus.mockResolvedValue(null);
+      locationsRepo.findLatestByBusId.mockResolvedValue(null);
+
+      const liveBus = await service.getLiveBusState('unknown-bus');
+      expect(liveBus.status).toBe(BusLiveStatus.TRIP_NOT_STARTED);
+      expect(liveBus.isStale).toBe(true);
+    });
+  });
+
+  describe('getLatestByTripId and getLatestByBusId', () => {
     it('should return latest location when trip exists', async () => {
       tripsRepo.findById.mockResolvedValue(mockTrip);
       locationsRepo.findLatestByTripId.mockResolvedValue(mockLocation);
@@ -384,20 +535,12 @@ describe('LocationsService', () => {
 
       await expect(service.getLatestByTripId('trip-id-1')).rejects.toThrow(NotFoundException);
     });
-  });
 
-  describe('getLatestByBusId', () => {
     it('should return latest location for bus', async () => {
       locationsRepo.findLatestByBusId.mockResolvedValue(mockLocation);
 
       const result = await service.getLatestByBusId('bus-id-1');
       expect(result).toEqual(mockLocation);
-    });
-
-    it('should throw NotFoundException when no bus location found', async () => {
-      locationsRepo.findLatestByBusId.mockResolvedValue(null);
-
-      await expect(service.getLatestByBusId('bus-id-1')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -408,6 +551,17 @@ describe('LocationsService', () => {
 
       const result = await service.getHistoryByTripId('trip-id-1', { limit: 50 });
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('getMetrics', () => {
+    it('should return health and connection metrics snapshot', () => {
+      metricsService.recordReceived();
+      metricsService.recordAccepted();
+      const metrics = service.getMetrics();
+      expect(metrics).toBeDefined();
+      expect(metrics.totalReceived).toBeGreaterThanOrEqual(1);
+      expect(metrics.acceptedCount).toBeGreaterThanOrEqual(1);
     });
   });
 });

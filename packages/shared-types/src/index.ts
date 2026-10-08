@@ -233,9 +233,65 @@ export interface LoginResponseData {
   user: UserProfile;
 }
 
-export interface IngestLocationPayload {
+export enum BusLiveStatus {
+  TRIP_NOT_STARTED = 'TRIP_NOT_STARTED',
+  LIVE = 'LIVE',
+  STALE = 'STALE',
+  OFFLINE = 'OFFLINE',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum GpsSignalQuality {
+  EXCELLENT = 'EXCELLENT',
+  ACCEPTABLE = 'ACCEPTABLE',
+  POOR = 'POOR',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export interface LiveBusState {
   busId: string;
+  busNumber?: string;
+  tripId?: string;
+  routeId?: string;
+  routeCode?: string;
+  routeName?: string;
+  driverId?: string;
+  driverName?: string;
+  status: BusLiveStatus;
+  isStale: boolean;
+  latitude?: number;
+  longitude?: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
+  accuracyQuality: GpsSignalQuality;
+  recordedAt?: string;
+  receivedAt?: string;
+  ageSeconds?: number;
+}
+
+export interface LiveLocationBroadcastEvent {
   tripId: string;
+  busId: string;
+  routeId: string;
+  routeCode: string;
+  busNumber: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  speed: number | null;
+  heading: number | null;
+  recordedAt: string;
+  receivedAt: string;
+  status: BusLiveStatus;
+  signalQuality: GpsSignalQuality;
+  locationId: string;
+}
+
+export interface IngestLocationPayload {
+  busId?: string;
+  tripId?: string;
   latitude: number;
   longitude: number;
   speed?: number;
@@ -243,3 +299,4 @@ export interface IngestLocationPayload {
   accuracy?: number;
   timestamp: string;
 }
+

@@ -22,13 +22,18 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { PaginatedResult } from '../users/users.service';
+import { LocationsService } from '../locations/locations.service';
+import { LiveBusStateDto } from '../locations/dto/live-bus-state.dto';
 
 @ApiTags('Buses')
 @Controller('buses')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('bearer-jwt')
 export class BusesController {
-  constructor(private readonly busesService: BusesService) {}
+  constructor(
+    private readonly busesService: BusesService,
+    private readonly locationsService: LocationsService,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN)
@@ -56,6 +61,22 @@ export class BusesController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Bus not found' })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<BusWithStatus> {
     return this.busesService.findOne(id);
+  }
+
+  @Get(':id/live')
+  @ApiOperation({
+    summary: 'Get live operational tracking state for a bus vehicle (Authenticated)',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Authoritative live bus state returned' })
+  async getLiveState(@Param('id', ParseUUIDPipe) id: string): Promise<LiveBusStateDto> {
+    return this.locationsService.getLiveBusState(id);
+  }
+
+  @Get(':id/live-location')
+  @ApiOperation({ summary: 'Get live location state for a bus vehicle (mobile apps alias)' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Authoritative live bus state returned' })
+  async getLiveLocation(@Param('id', ParseUUIDPipe) id: string): Promise<LiveBusStateDto> {
+    return this.locationsService.getLiveBusState(id);
   }
 
   @Patch(':id')

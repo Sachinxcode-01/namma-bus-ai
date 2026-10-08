@@ -194,6 +194,29 @@ export class TripsRepository {
     return { trips, total };
   }
 
+  async findAll(params: {
+    skip?: number;
+    take?: number;
+    status?: TripStatus;
+    busId?: string;
+    driverId?: string;
+    routeId?: string;
+    date?: string;
+    search?: string;
+  }): Promise<{ items: TripSummary[]; trips: TripSummary[]; total: number }> {
+    const res = await this.findMany({
+      skip: params.skip ?? 0,
+      take: params.take ?? 50,
+      status: params.status,
+      busId: params.busId,
+      driverId: params.driverId,
+      routeId: params.routeId,
+      date: params.date,
+      search: params.search,
+    });
+    return { items: res.trips, trips: res.trips, total: res.total };
+  }
+
   async findById(id: string): Promise<TripDetail | null> {
     const trip = await this.prisma.trip.findUnique({
       where: { id },

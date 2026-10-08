@@ -13,13 +13,22 @@ import {
 } from 'class-validator';
 
 export class IngestLocationDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
-    description: 'Unique UUID of the active trip',
+    description:
+      'Unique UUID of the active trip (optional if driver has an active trip or provided via route param)',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsUUID('4', { message: 'tripId must be a valid UUID' })
-  tripId!: string;
+  tripId?: string;
+
+  @ApiPropertyOptional({
+    example: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    description: 'Optional UUID of the bus vehicle associated with the trip',
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'busId must be a valid UUID' })
+  busId?: string;
 
   @ApiProperty({
     example: 12.9716,
