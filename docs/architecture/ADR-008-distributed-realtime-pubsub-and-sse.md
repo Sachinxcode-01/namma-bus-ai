@@ -18,7 +18,7 @@ While sufficient for single-replica local development, this in-memory design suf
 We have designed and implemented a production-grade, distributed real-time backbone architecture:
 
 ### 1. Unified Real-Time Bus Abstraction (`RealtimeBus`)
-- Defined a contract in `apps/api/src/modules/realtime/interfaces/realtime-bus.interface.ts` exposing `publish<T>(channel, event)` and `subscribe<T>(channel): Observable<T>`.
+- Defined a contract in `apps/api/src/modules/realtime/interfaces/realtime-bus.interface.ts` exposing `publish(channel, payload)` and `subscribe(channel, handler: (payload: unknown) => void): RealtimeSubscription` using a handler callback rather than an Observable.
 - Standardized typed channels:
   - `nammabus:locations`
   - `nammabus:eta`
@@ -42,7 +42,7 @@ We have designed and implemented a production-grade, distributed real-time backb
 
 ### 3. Hardened SSE Connection Lifecycle and Security
 - **`SseRateLimitGuard`**:
-  - Enforces strict concurrency limits per authenticated user (`SSE_MAX_CONCURRENT_PER_USER`, default: 3) and per IP address (`SSE_MAX_CONCURRENT_PER_IP`, default: 10).
+  - Enforces strict concurrency limits per authenticated user (`SSE_MAX_CONCURRENT_PER_USER`, default: 10) and per IP address (`SSE_MAX_CONCURRENT_PER_IP`, default: 30).
   - Immediately rejects requests exceeding limits with HTTP `429 Too Many Requests`.
   - Attaches to `res.on('close')` socket lifecycle hooks to accurately decrement active connection counters upon client disconnect or network abort.
 - **Bounded Stream Lifetimes**:
@@ -59,7 +59,7 @@ We have designed and implemented a production-grade, distributed real-time backb
 - When exceptions occur in SSE stream pipelines, `SseExceptionFilter` formats and writes a structured SSE frame:
   ```text
   event: error
-  data: {"statusCode": 400, "errorCode": "INVALID_STREAM_PARAMETER", "message": "...", "timestamp": "..."}
+  data: {"code": "INVALID_STREAM_PARAMETER", "message": "...", "timestamp": "..."}
   ```
 - Terminates the response cleanly without crashing the NestJS application or corrupting connection state.
 

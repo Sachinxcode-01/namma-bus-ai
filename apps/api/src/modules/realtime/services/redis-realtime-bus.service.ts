@@ -100,6 +100,15 @@ export class RedisRealtimeBus implements RealtimeBus, OnModuleInit, OnModuleDest
       this.pubClient.on('error', (err) => this.handleRedisError('pubClient', err));
       this.subClient.on('error', (err) => this.handleRedisError('subClient', err));
 
+      this.subClient.on('ready', () => {
+        for (const channel of this.channelHandlers.keys()) {
+          this.subClient?.subscribe(channel).catch((err) => {
+            this.logger.warn(`Failed to subscribe to Redis channel ${channel}: ${err.message}`);
+            this.recordFailure();
+          });
+        }
+      });
+
       this.subClient.on('message', (channel, message) => {
         this.handleInboundMessage(channel, message);
       });
@@ -135,7 +144,12 @@ export class RedisRealtimeBus implements RealtimeBus, OnModuleInit, OnModuleDest
     } catch {
       // If payload wasn't JSON, forward raw string
       for (const handler of handlers) {
-        handler(message);
+        try {
+          handler(message);
+        } catch (handlerErr: unknown) {
+          const msg = handlerErr instanceof Error ? handlerErr.message : String(handlerErr);
+          this.logger.error(`Error in subscriber handler for channel ${channel}: ${msg}`);
+        }
       }
     }
   }
