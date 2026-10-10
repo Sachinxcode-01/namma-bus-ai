@@ -6,20 +6,26 @@ import { RedisRealtimeBus } from './services/redis-realtime-bus.service';
 import { SseRateLimitGuard } from './guards/sse-rate-limit.guard';
 import { SseExceptionFilter } from './filters/sse-exception.filter';
 
+const isRedisBackend = process.env.REALTIME_BACKEND === 'redis';
+
 const realtimeBusProvider: Provider = {
   provide: REALTIME_BUS,
   useFactory: (
     configService: ConfigService,
     inMemoryBus: InMemoryRealtimeBus,
-    redisBus: RedisRealtimeBus,
+    redisBus?: RedisRealtimeBus,
   ) => {
     const backend = configService.get<string>('realtime.backend', 'memory');
-    if (backend === 'redis') {
+    if (backend === 'redis' && redisBus) {
       return redisBus;
     }
     return inMemoryBus;
   },
-  inject: [ConfigService, InMemoryRealtimeBus, RedisRealtimeBus],
+  inject: [
+    ConfigService,
+    InMemoryRealtimeBus,
+    { token: RedisRealtimeBus, optional: true },
+  ],
 };
 
 @Global()
@@ -27,7 +33,7 @@ const realtimeBusProvider: Provider = {
   imports: [ConfigModule],
   providers: [
     InMemoryRealtimeBus,
-    RedisRealtimeBus,
+    ...(isRedisBackend ? [RedisRealtimeBus] : []),
     realtimeBusProvider,
     SseRateLimitGuard,
     SseExceptionFilter,
@@ -35,7 +41,7 @@ const realtimeBusProvider: Provider = {
   exports: [
     REALTIME_BUS,
     InMemoryRealtimeBus,
-    RedisRealtimeBus,
+    ...(isRedisBackend ? [RedisRealtimeBus] : []),
     SseRateLimitGuard,
     SseExceptionFilter,
   ],

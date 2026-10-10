@@ -122,10 +122,14 @@ export class LocationsService {
 
     // 6. Comprehensive Validation Pipeline (Coordinates, Timestamp, Accuracy, Teleportation)
     let validationResult;
+    const currentSignature = `${tripId}:${pingTime.getTime()}:${dto.latitude.toFixed(6)}:${dto.longitude.toFixed(6)}`;
     try {
       validationResult = this.validatorService.validatePayload(dto, latestLocation);
     } catch (err) {
-      this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      const currentRecent = this.deduplicationService.getRecentPing(tripId);
+      if (currentRecent?.signature === currentSignature) {
+        this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      }
       this.metricsService.recordRejected();
       throw err;
     }
@@ -148,7 +152,10 @@ export class LocationsService {
         timestamp: pingTime,
       });
     } catch (dbError) {
-      this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      const currentRecent = this.deduplicationService.getRecentPing(tripId);
+      if (currentRecent?.signature === currentSignature) {
+        this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      }
       this.logger.error(
         `Failed to persist GPS telemetry for trip ${tripId}. In-memory state preserved without corruption: ${(dbError as Error).message}`,
       );

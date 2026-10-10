@@ -440,12 +440,15 @@ export class NotificationsService {
     );
 
     // 1. Publish incident to realtime pub/sub backbone
+    const effectiveType = dto.type || 'DELAY';
+    const effectiveSeverity = dto.severity || 'HIGH';
+
     this.realtimeBus.publish(REALTIME_CHANNELS.INCIDENTS, {
       id: `inc-broadcast-${Date.now()}`,
       title: dto.title,
       message: dto.message,
-      type: dto.type || 'DELAY',
-      severity: dto.severity || 'HIGH',
+      type: effectiveType,
+      severity: effectiveSeverity,
       routeId: dto.routeId,
       tripId: dto.tripId,
       broadcastBy: currentUser.id,
@@ -454,9 +457,9 @@ export class NotificationsService {
 
     // 2. Map incident category to NotificationType
     let notifType: NotificationType = NotificationType.BROADCAST;
-    if (dto.type === 'DELAY') notifType = NotificationType.DELAY;
-    else if (dto.type === 'BREAKDOWN') notifType = NotificationType.BREAKDOWN;
-    else if (dto.type === 'ROUTE_CHANGE') notifType = NotificationType.ROUTE_ANOMALY;
+    if (effectiveType === 'DELAY') notifType = NotificationType.DELAY;
+    else if (effectiveType === 'BREAKDOWN') notifType = NotificationType.BREAKDOWN;
+    else if (effectiveType === 'ROUTE_CHANGE') notifType = NotificationType.ROUTE_ANOMALY;
 
     return this.broadcast(
       {
@@ -465,8 +468,8 @@ export class NotificationsService {
         type: notifType,
         routeId: dto.routeId,
         metadata: {
-          incidentType: dto.type,
-          severity: dto.severity,
+          incidentType: effectiveType,
+          severity: effectiveSeverity,
           tripId: dto.tripId,
         },
       },
