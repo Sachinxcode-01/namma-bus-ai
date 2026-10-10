@@ -7,6 +7,7 @@ import { NotificationStreamService } from './services/notification-stream.servic
 import { NotificationPreferencesService } from './services/notification-preferences.service';
 import { ForbiddenException } from '../../common/errors/app.exception';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { REALTIME_BUS } from '../realtime/interfaces/realtime-bus.interface';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -93,6 +94,13 @@ describe('NotificationsService', () => {
         {
           provide: NotificationPreferencesService,
           useValue: mockPreferencesService,
+        },
+        {
+          provide: REALTIME_BUS,
+          useValue: {
+            publish: jest.fn(),
+            subscribe: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+          },
         },
       ],
     }).compile();

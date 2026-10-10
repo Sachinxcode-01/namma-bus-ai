@@ -9,6 +9,7 @@ import { TripsRepository, TripDetail } from '../trips/trips.repository';
 import { LocationsRepository } from '../locations/locations.repository';
 import { EtaStatus } from './domain/eta.types';
 import { NotFoundException, ValidationException } from '../../common/errors/app.exception';
+import { REALTIME_BUS } from '../realtime/interfaces/realtime-bus.interface';
 
 describe('EtaService', () => {
   let service: EtaService;
@@ -88,6 +89,13 @@ describe('EtaService', () => {
         RouteProgressService,
         EtaCacheService,
         EtaStreamService,
+        {
+          provide: REALTIME_BUS,
+          useValue: {
+            publish: jest.fn(),
+            subscribe: jest.fn().mockReturnValue({ unsubscribe: jest.fn() }),
+          },
+        },
         {
           provide: TripsRepository,
           useValue: {

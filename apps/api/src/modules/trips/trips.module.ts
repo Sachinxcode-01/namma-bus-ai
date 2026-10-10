@@ -10,7 +10,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    BusesModule,
+    forwardRef(() => BusesModule),
     DriversModule,
     RoutesModule,
     forwardRef(() => LocationsModule),

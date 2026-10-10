@@ -13,7 +13,11 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 
 @Module({
-  imports: [TripsModule, forwardRef(() => EtaModule), forwardRef(() => NotificationsModule)],
+  imports: [
+    forwardRef(() => TripsModule),
+    forwardRef(() => EtaModule),
+    forwardRef(() => NotificationsModule),
+  ],
   controllers: [LocationsController],
   providers: [
     LocationsService,

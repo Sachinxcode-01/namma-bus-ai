@@ -13,6 +13,7 @@ import {
   ParseUUIDPipe,
   Sse,
   MessageEvent,
+  UseFilters,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { DeviceToken, Notification, NotificationPreference, UserRole } from '@prisma/client';
@@ -26,8 +27,11 @@ import { UnregisterDeviceTokenDto } from './dto/unregister-device-token.dto';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { BroadcastNotificationDto } from './dto/broadcast-notification.dto';
+import { BroadcastIncidentDto } from './dto/broadcast-incident.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { SseRateLimitGuard } from '../realtime/guards/sse-rate-limit.guard';
+import { SseExceptionFilter } from '../realtime/filters/sse-exception.filter';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -161,13 +165,34 @@ export class NotificationsController {
     return this.notificationsService.broadcast(dto, currentUser);
   }
 
+  @Post('incidents/broadcast')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Broadcast transit incident alert across realtime stream and push channels (Admin only)',
+  })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Incident alert broadcasted to fleet and subscribers' })
+  @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Only administrators may broadcast incident alerts' })
+  async broadcastIncident(
+    @Body() dto: BroadcastIncidentDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<{ recipientCount: number }> {
+    return this.notificationsService.broadcastIncident(dto, currentUser);
+  }
+
   // ---------------------------------------------------------------------------
   // Real-time SSE Stream
   // ---------------------------------------------------------------------------
 
   @Sse('stream')
+  @UseGuards(SseRateLimitGuard)
+  @UseFilters(SseExceptionFilter)
   @ApiOperation({
     summary: 'Real-time Server-Sent Events (SSE) notification stream for authenticated user',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Real-time stream of user notifications' })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Concurrent SSE stream connection limit exceeded',
   })
   getUserStream(@CurrentUser() currentUser: AuthenticatedUser): Observable<MessageEvent> {
     return this.streamService.getUserStream(currentUser.id);

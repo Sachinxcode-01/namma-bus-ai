@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import {
   Incident,
   Notification,
@@ -15,9 +15,15 @@ import { NotificationPreferencesService } from './services/notification-preferen
 import { NotificationPayload } from './domain/notification.types';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
 import { BroadcastNotificationDto } from './dto/broadcast-notification.dto';
+import { BroadcastIncidentDto } from './dto/broadcast-incident.dto';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { ForbiddenException, NotFoundException } from '../../common/errors/app.exception';
 import { PaginatedResult } from '../users/users.service';
+import {
+  REALTIME_BUS,
+  RealtimeBus,
+} from '../realtime/interfaces/realtime-bus.interface';
+import { REALTIME_CHANNELS } from '../realtime/constants/realtime.constants';
 
 @Injectable()
 export class NotificationsService {
@@ -28,6 +34,8 @@ export class NotificationsService {
     private readonly dispatchService: NotificationDispatchService,
     private readonly streamService: NotificationStreamService,
     private readonly preferencesService: NotificationPreferencesService,
+    @Inject(REALTIME_BUS)
+    private readonly realtimeBus: RealtimeBus,
   ) {}
 
   /**
@@ -414,4 +422,56 @@ export class NotificationsService {
 
     return { recipientCount: recipientUserIds.length };
   }
+
+  /**
+   * Broadcasts an incident event across distributed realtime channels (INCIDENTS channel)
+   * and dispatches push notifications to affected route students and staff.
+   */
+  async broadcastIncident(
+    dto: BroadcastIncidentDto,
+    currentUser: AuthenticatedUser,
+  ): Promise<{ recipientCount: number }> {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators may broadcast incident alerts.');
+    }
+
+    this.logger.log(
+      `Broadcasting incident "${dto.title}" across realtime pub/sub and notification channels`,
+    );
+
+    // 1. Publish incident to realtime pub/sub backbone
+    this.realtimeBus.publish(REALTIME_CHANNELS.INCIDENTS, {
+      id: `inc-broadcast-${Date.now()}`,
+      title: dto.title,
+      message: dto.message,
+      type: dto.type || 'DELAY',
+      severity: dto.severity || 'HIGH',
+      routeId: dto.routeId,
+      tripId: dto.tripId,
+      broadcastBy: currentUser.id,
+      timestamp: new Date().toISOString(),
+    });
+
+    // 2. Map incident category to NotificationType
+    let notifType: NotificationType = NotificationType.BROADCAST;
+    if (dto.type === 'DELAY') notifType = NotificationType.DELAY;
+    else if (dto.type === 'BREAKDOWN') notifType = NotificationType.BREAKDOWN;
+    else if (dto.type === 'ROUTE_CHANGE') notifType = NotificationType.ROUTE_ANOMALY;
+
+    return this.broadcast(
+      {
+        title: dto.title,
+        body: dto.message,
+        type: notifType,
+        routeId: dto.routeId,
+        metadata: {
+          incidentType: dto.type,
+          severity: dto.severity,
+          tripId: dto.tripId,
+        },
+      },
+      currentUser,
+    );
+  }
 }
+

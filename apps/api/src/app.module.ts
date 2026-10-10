@@ -7,9 +7,11 @@ import {
   authConfig,
   notificationsConfig,
   firebaseConfig,
+  realtimeConfig,
 } from './config';
 import { LoggingModule } from './logging/logging.module';
 import { PrismaModule } from './database/prisma.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -30,10 +32,11 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
-      load: [appConfig, databaseConfig, authConfig, notificationsConfig, firebaseConfig],
+      load: [appConfig, databaseConfig, authConfig, notificationsConfig, firebaseConfig, realtimeConfig],
     }),
     LoggingModule,
     PrismaModule,
+    RealtimeModule,
     HealthModule,
     AuthModule,
     UsersModule,

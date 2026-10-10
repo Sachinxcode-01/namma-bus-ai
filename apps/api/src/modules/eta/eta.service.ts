@@ -30,6 +30,7 @@ export class EtaService {
     string,
     { etaMinutes: number; nextStopId?: string; status: EtaStatus }
   >();
+  private readonly lastBroadcastEventMap = new Map<string, TripEtaBroadcastEvent>();
 
   constructor(
     private readonly tripsRepository: TripsRepository,
@@ -139,6 +140,7 @@ export class EtaService {
           distanceRemainingMeters: result.distanceRemainingMeters,
         };
 
+        this.lastBroadcastEventMap.set(tripId, broadcastEvent);
         this.etaStream.emitEtaUpdate(broadcastEvent);
       }
 
@@ -155,6 +157,19 @@ export class EtaService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Failed to recalculate and broadcast ETA for trip ${tripId}: ${msg}`);
+
+      // Resilient fallback: re-broadcast last known ETA so client never encounters dead silence
+      const lastKnown = this.lastBroadcastEventMap.get(tripId);
+      if (lastKnown) {
+        this.logger.debug(
+          `Re-broadcasting last known ETA for trip ${tripId} following calculation error`,
+        );
+        this.etaStream.emitEtaUpdate({
+          ...lastKnown,
+          confidence: EtaConfidence.LOW,
+          calculatedAt: new Date().toISOString(),
+        });
+      }
       return null;
     }
   }

@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Sse,
   MessageEvent,
+  UseFilters,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
@@ -18,6 +19,8 @@ import { TripEtaResponseDto } from './dto/trip-eta-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { SseRateLimitGuard } from '../realtime/guards/sse-rate-limit.guard';
+import { SseExceptionFilter } from '../realtime/filters/sse-exception.filter';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -62,6 +65,8 @@ export class EtaController {
   }
 
   @Sse(':tripId/eta/stream')
+  @UseGuards(SseRateLimitGuard)
+  @UseFilters(SseExceptionFilter)
   @ApiOperation({
     summary:
       'Server-Sent Events (SSE) real-time arrival prediction stream for an active trip (Authenticated)',
@@ -72,6 +77,10 @@ export class EtaController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Stream of trip_eta_updated events',
+  })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Concurrent SSE stream connection limit exceeded',
   })
   streamTripEta(@Param('tripId', ParseUUIDPipe) tripId: string): Observable<MessageEvent> {
     return this.etaStreamService.getTripEtaStream(tripId);

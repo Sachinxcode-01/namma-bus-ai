@@ -111,6 +111,7 @@ export class LocationsService {
 
     // 5. Deduplication check (handle duplicate mobile network retries idempotently)
     const pingTime = new Date(dto.timestamp);
+    const previousDedup = this.deduplicationService.getRecentPing(tripId);
     const dedup = this.deduplicationService.check(tripId, dto.latitude, dto.longitude, pingTime);
 
     if (dedup.isDuplicate && latestLocation) {
@@ -124,6 +125,7 @@ export class LocationsService {
     try {
       validationResult = this.validatorService.validatePayload(dto, latestLocation);
     } catch (err) {
+      this.deduplicationService.restoreRecentPing(tripId, previousDedup);
       this.metricsService.recordRejected();
       throw err;
     }
@@ -132,17 +134,26 @@ export class LocationsService {
       this.metricsService.recordSuspicious();
     }
 
-    // 7. Persist Validated Telemetry Record
-    const location = await this.locationsRepository.create({
-      busId: trip.busId,
-      tripId,
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-      speed: dto.speed,
-      heading: dto.heading,
-      accuracy: dto.accuracy,
-      timestamp: pingTime,
-    });
+    // 7. Persist Validated Telemetry Record with Rollback on DB Error
+    let location: LiveLocation;
+    try {
+      location = await this.locationsRepository.create({
+        busId: trip.busId,
+        tripId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        speed: dto.speed,
+        heading: dto.heading,
+        accuracy: dto.accuracy,
+        timestamp: pingTime,
+      });
+    } catch (dbError) {
+      this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      this.logger.error(
+        `Failed to persist GPS telemetry for trip ${tripId}. In-memory state preserved without corruption: ${(dbError as Error).message}`,
+      );
+      throw dbError;
+    }
 
     this.metricsService.recordAccepted();
 

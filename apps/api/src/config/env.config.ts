@@ -34,3 +34,17 @@ export const firebaseConfig = registerAs('firebase', () => ({
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 }));
+
+export const realtimeConfig = registerAs('realtime', () => ({
+  backend: (process.env.REALTIME_BACKEND || 'memory') as 'memory' | 'redis',
+  redisUrl: process.env.REDIS_URL,
+  redisHost: process.env.REDIS_HOST || '127.0.0.1',
+  redisPort: parseInt(process.env.REDIS_PORT || '6379', 10),
+  redisPassword: process.env.REDIS_PASSWORD,
+  sseMaxConnectionLifetimeMs: parseInt(
+    process.env.SSE_MAX_CONNECTION_LIFETIME_MS || '900000',
+    10,
+  ),
+  sseMaxConcurrentPerUser: parseInt(process.env.SSE_MAX_CONCURRENT_PER_USER || '10', 10),
+  sseMaxConcurrentPerIp: parseInt(process.env.SSE_MAX_CONCURRENT_PER_IP || '30', 10),
+}));

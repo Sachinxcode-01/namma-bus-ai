@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Sse,
   MessageEvent,
+  UseFilters,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LiveLocation, UserRole } from '@prisma/client';
@@ -22,12 +23,14 @@ import { QueryLocationHistoryDto } from './dto/query-location-history.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { SseRateLimitGuard } from '../realtime/guards/sse-rate-limit.guard';
+import { SseExceptionFilter } from '../realtime/filters/sse-exception.filter';
+import { RouteCodeValidationPipe } from '../../common/pipes/route-code-validation.pipe';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { BatchIngestResult, LiveBusState } from './domain/gps-telemetry.types';
-import { GpsMetricsSnapshot } from './services/gps-metrics.service';
 
 @ApiTags('Locations & GPS Telemetry')
 @Controller('locations')
@@ -158,15 +161,21 @@ export class LocationsController {
     summary: 'Retrieve GPS telemetry health metrics and operational counters (Admin only)',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Metrics snapshot returned' })
-  getTelemetryMetrics(): GpsMetricsSnapshot {
-    return this.locationsService.getMetrics();
+  getTelemetryMetrics(): Record<string, unknown> {
+    return this.locationsService.getHealthMetrics();
   }
 
   @Sse('trips/:tripId/stream')
+  @UseGuards(SseRateLimitGuard)
+  @UseFilters(SseExceptionFilter)
   @ApiOperation({
     summary: 'Server-Sent Events (SSE) live location stream for an active trip (Authenticated)',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Continuous stream of GPS events' })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Concurrent SSE stream connection limit exceeded',
+  })
   streamTripLocation(
     @Param('tripId', ParseUUIDPipe) tripId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -175,10 +184,16 @@ export class LocationsController {
   }
 
   @Sse('buses/:busId/stream')
+  @UseGuards(SseRateLimitGuard)
+  @UseFilters(SseExceptionFilter)
   @ApiOperation({
     summary: 'Server-Sent Events (SSE) live location stream for a bus vehicle (Authenticated)',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Continuous stream of GPS events' })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Concurrent SSE stream connection limit exceeded',
+  })
   streamBusLocation(
     @Param('busId', ParseUUIDPipe) busId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -187,12 +202,22 @@ export class LocationsController {
   }
 
   @Sse('routes/:routeCode/stream')
+  @UseGuards(SseRateLimitGuard)
+  @UseFilters(SseExceptionFilter)
   @ApiOperation({
     summary: 'Server-Sent Events (SSE) live location stream for a route (Authenticated)',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Continuous stream of GPS events for route' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid routeCode format (must match ^[A-Z0-9-]{2,16}$)',
+  })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Concurrent SSE stream connection limit exceeded',
+  })
   streamRouteLocation(
-    @Param('routeCode') routeCode: string,
+    @Param('routeCode', RouteCodeValidationPipe) routeCode: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Observable<MessageEvent> {
     return this.streamService.getRouteStream(routeCode, user);
@@ -200,10 +225,20 @@ export class LocationsController {
 
   @Sse('fleet/stream')
   @Roles(UserRole.ADMIN)
+  @UseGuards(SseRateLimitGuard)
+  @UseFilters(SseExceptionFilter)
   @ApiOperation({
     summary: 'Server-Sent Events (SSE) live location stream for entire fleet (Admin only)',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Continuous stream of all fleet GPS events' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Forbidden: only administrators may access the fleet stream',
+  })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Concurrent SSE stream connection limit exceeded',
+  })
   streamFleetLocation(@CurrentUser() user: AuthenticatedUser): Observable<MessageEvent> {
     return this.streamService.getFleetStream(user);
   }
