@@ -159,7 +159,7 @@ export function useFleetStream(): UseFleetStreamResult {
                 setLastEventAt(new Date().toISOString());
               } else if (currentEvent === 'ping') {
                 setLastPingAt(data.timestamp || new Date().toISOString());
-                if ((statusRef.current as RealtimeStreamStatus) === 'stale') {
+                if ((statusRef.current as string) === 'stale') {
                   statusRef.current = 'live';
                   setStatus('live');
                 }

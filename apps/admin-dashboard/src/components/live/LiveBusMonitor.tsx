@@ -9,7 +9,7 @@ import {
   TripStatus,
 } from '@nammabus/shared-types';
 import { useLiveTelemetry } from '../../hooks/useLiveTelemetry';
-import { ConnectionState } from '../../types';
+import { useFleetStream } from '../../hooks/useFleetStream';
 
 interface LiveBusMonitorProps {
   buses: BusEntity[];
@@ -25,46 +25,64 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
   const [selectedBusId, setSelectedBusId] = useState<string>('bus-1');
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
 
-  // Hook handles isolated polling and stale GPS detection
-  const {
-    liveLocation,
-    connectionState,
-    isGpsStale,
-    secondsAgo,
-    error,
-    refreshNow,
-  } = useLiveTelemetry(selectedBusId, 3500);
+  // Authoritative real-time SSE fleet stream
+  const fleetStream = useFleetStream();
+
+  // Polling fallback if SSE is connecting or unavailable for this vehicle
+  const polledTelemetry = useLiveTelemetry(selectedBusId, 5000);
+
+  const fleetBus = fleetStream.busPositions[selectedBusId];
+
+  const liveLocation = fleetBus
+    ? {
+        busId: fleetBus.busId,
+        tripId: fleetBus.tripId,
+        latitude: fleetBus.latitude,
+        longitude: fleetBus.longitude,
+        speed: fleetBus.speed,
+        heading: fleetBus.heading,
+        accuracy: fleetBus.accuracy,
+        timestamp: fleetBus.recordedAt,
+      }
+    : polledTelemetry.liveLocation;
+
+  const secondsAgo = fleetBus
+    ? Math.max(0, Math.floor((Date.now() - fleetBus.lastUpdatedMs) / 1000))
+    : polledTelemetry.secondsAgo;
+
+  const isGpsStale = fleetBus
+    ? secondsAgo > 45 || fleetBus.status === 'STALE'
+    : polledTelemetry.isGpsStale;
 
   const activeTrip = trips.find(
     (t) => t.busId === selectedBusId && t.status === TripStatus.ACTIVE
   );
   const selectedBus = buses.find((b) => b.id === selectedBusId) || buses[0];
 
-  const getConnectionBadge = (state: ConnectionState, stale: boolean) => {
-    if (stale) {
-      return (
-        <Badge variant="warning" size="sm" pulse>
-          GPS STALE ({secondsAgo}s ago)
-        </Badge>
-      );
-    }
-    switch (state) {
-      case 'connected':
+  const getStreamBadge = () => {
+    switch (fleetStream.status) {
+      case 'live':
         return (
           <Badge variant="active" size="sm" pulse>
-            TELEMETRY LIVE ({secondsAgo}s ago)
+            ⚡ SSE LIVE ({fleetStream.activeBusesCount} active)
+          </Badge>
+        );
+      case 'stale':
+        return (
+          <Badge variant="warning" size="sm" pulse>
+            SSE STREAM STALE
           </Badge>
         );
       case 'connecting':
         return (
           <Badge variant="neutral" size="sm">
-            CONNECTING...
+            CONNECTING STREAM...
           </Badge>
         );
-      case 'offline':
+      case 'error':
         return (
           <Badge variant="danger" size="sm">
-            DISCONNECTED
+            STREAM DISCONNECTED
           </Badge>
         );
       default:
@@ -76,12 +94,19 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
     }
   };
 
+  const refreshNow = () => {
+    fleetStream.reconnectNow();
+    polledTelemetry.refreshNow();
+  };
+
+  const streamError = fleetStream.error || polledTelemetry.error;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <PageHeader
         title="Live Fleet Geospatial Radar"
         description="Sub-second GPS telemetry ingestion and route progression tracking"
-        badge={getConnectionBadge(connectionState, isGpsStale)}
+        badge={getStreamBadge()}
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Select
@@ -94,14 +119,14 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
               style={{ minWidth: '220px' }}
             />
             <Button variant="secondary" size="sm" onClick={refreshNow}>
-              ↻ Ping GPS
+              ↻ Refresh Telemetry
             </Button>
           </div>
         }
       />
 
       {/* Stale or Offline Warning Banner */}
-      {(isGpsStale || error) && (
+      {(isGpsStale || streamError) && (
         <div
           role="alert"
           style={{
@@ -123,6 +148,7 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
             <span>
               <strong>GPS Telemetry Notice:</strong> Last location ping was recorded{' '}
               {secondsAgo} seconds ago. Driver phone may be passing through a low-signal cellular tunnel.
+              {streamError && ` (${streamError})`}
             </span>
           </div>
           <Button variant="ghost" size="sm" onClick={refreshNow} style={{ color: '#fbbf24' }}>

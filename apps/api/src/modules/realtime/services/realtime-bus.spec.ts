@@ -132,5 +132,21 @@ describe('RealtimeBus Backbone', () => {
 
       sub.unsubscribe();
     });
+
+    it('should isolate errors in non-JSON fallback handler loop and deliver to other handlers', () => {
+      const successfulReceived: unknown[] = [];
+      redisBus.subscribe('test:nonjson', () => {
+        throw new Error('Exploding fallback handler');
+      });
+      redisBus.subscribe('test:nonjson', (payload) => {
+        successfulReceived.push(payload);
+      });
+
+      expect(() => {
+        (redisBus as any).handleInboundMessage('test:nonjson', 'non-json-raw-string');
+      }).not.toThrow();
+
+      expect(successfulReceived).toEqual(['non-json-raw-string']);
+    });
   });
 });

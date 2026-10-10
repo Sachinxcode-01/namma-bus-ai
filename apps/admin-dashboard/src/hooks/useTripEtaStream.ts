@@ -26,6 +26,8 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
   const [error, setError] = useState<string | null>(null);
   const [reconnectCount, setReconnectCount] = useState<number>(0);
 
+  const statusRef = useRef<RealtimeStreamStatus>('connecting');
+  const reconnectCountRef = useRef<number>(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const staleCheckIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +55,7 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
     if (!tripId || !isMountedRef.current) return;
 
     cleanup();
+    statusRef.current = 'connecting';
     setStatus('connecting');
     setError(null);
 
@@ -89,6 +92,7 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
+      let currentEvent = 'message';
 
       lastActivityMsRef.current = Date.now();
 
@@ -97,6 +101,7 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
         if (!isMountedRef.current) return;
         const elapsed = Date.now() - lastActivityMsRef.current;
         if (elapsed > STALE_THRESHOLD_MS) {
+          statusRef.current = 'stale';
           setStatus('stale');
         }
       }, 5000);
@@ -109,7 +114,6 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        let currentEvent = 'message';
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed.startsWith('event:')) {
@@ -122,11 +126,13 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
 
               if (currentEvent === 'trip_eta_updated') {
                 setEta(data as TripEtaBroadcastEvent);
+                statusRef.current = 'live';
                 setStatus('live');
                 setLastEventAt(new Date().toISOString());
               } else if (currentEvent === 'ping') {
                 setLastPingAt(data.timestamp || new Date().toISOString());
-                if (status === 'stale') {
+                if ((statusRef.current as string) === 'stale') {
+                  statusRef.current = 'live';
                   setStatus('live');
                 }
               } else if (currentEvent === 'error') {
@@ -135,8 +141,23 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
             } catch {
               // Ignore non-JSON chunks
             }
+          } else if (trimmed === '') {
+            currentEvent = 'message';
           }
         }
+      }
+
+      if (isMountedRef.current && !controller.signal.aborted) {
+        const attempt = reconnectCountRef.current + 1;
+        reconnectCountRef.current = attempt;
+        setReconnectCount(attempt);
+        const backoffMs = Math.min(1000 * Math.pow(1.4, attempt) + Math.random() * 1000, 30000);
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            connect();
+          }
+        }, backoffMs);
       }
     } catch (err: unknown) {
       if (controller.signal.aborted) return;
@@ -144,10 +165,12 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
 
       const message = err instanceof Error ? err.message : 'Real-time stream connection lost';
       setError(message);
+      statusRef.current = 'error';
       setStatus('error');
 
       // Schedule reconnection with jittered exponential backoff (max 30s)
-      const attempt = reconnectCount + 1;
+      const attempt = reconnectCountRef.current + 1;
+      reconnectCountRef.current = attempt;
       setReconnectCount(attempt);
       const backoffMs = Math.min(1000 * Math.pow(1.4, attempt) + Math.random() * 1000, 30000);
 
@@ -156,8 +179,13 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
           connect();
         }
       }, backoffMs);
+    } finally {
+      if (staleCheckIntervalRef.current) {
+        clearInterval(staleCheckIntervalRef.current);
+        staleCheckIntervalRef.current = null;
+      }
     }
-  }, [tripId, reconnectCount, cleanup, status]);
+  }, [tripId, cleanup]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -170,6 +198,7 @@ export function useTripEtaStream(tripId?: string | null): UseTripEtaStreamResult
   }, [tripId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reconnectNow = useCallback(() => {
+    reconnectCountRef.current = 0;
     setReconnectCount(0);
     connect();
   }, [connect]);
