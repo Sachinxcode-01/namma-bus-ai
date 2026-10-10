@@ -11,10 +11,16 @@ import { OsrmRoutingProvider } from './providers/osrm-routing.provider';
 import { ROUTING_PROVIDER } from './interfaces/routing-provider.interface';
 import { TripsModule } from '../trips/trips.module';
 import { LocationsModule } from '../locations/locations.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 
 @Module({
-  imports: [ConfigModule, TripsModule, forwardRef(() => LocationsModule)],
+  imports: [
+    ConfigModule,
+    TripsModule,
+    forwardRef(() => LocationsModule),
+    forwardRef(() => NotificationsModule),
+  ],
   controllers: [EtaController],
   providers: [
     EtaService,

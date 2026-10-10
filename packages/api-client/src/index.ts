@@ -636,6 +636,30 @@ export class ApiClient {
         body: JSON.stringify(data),
       }),
   };
+  public realtime = {
+    getFleetStreamUrl: () => `${this.baseUrl}/locations/fleet/stream`,
+    getTripStreamUrl: (tripId: string) => `${this.baseUrl}/locations/trips/${tripId}/stream`,
+    getBusStreamUrl: (busId: string) => `${this.baseUrl}/locations/buses/${busId}/stream`,
+    getRouteStreamUrl: (routeCode: string) => `${this.baseUrl}/locations/routes/${routeCode}/stream`,
+    getTripEtaStreamUrl: (tripId: string) => `${this.baseUrl}/trips/${tripId}/eta/stream`,
+    getNotificationStreamUrl: () => `${this.baseUrl}/notifications/stream`,
+    getHealth: () => this.request<Record<string, unknown>>('/locations/health'),
+    broadcastIncident: (data: {
+      title: string;
+      message: string;
+      type?: string;
+      severity?: string;
+      routeId?: string;
+      tripId?: string;
+    }) =>
+      this.request<{ recipientCount: number }>('/notifications/incidents/broadcast', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  };
 }
 
+export type RealtimeStreamStatus = 'connecting' | 'live' | 'stale' | 'error';
+
 export const api = new ApiClient();
+

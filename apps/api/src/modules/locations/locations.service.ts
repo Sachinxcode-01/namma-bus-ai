@@ -8,6 +8,7 @@ import { GpsDeduplicationService } from './services/gps-deduplication.service';
 import { LiveTrackingService } from './services/live-tracking.service';
 import { GpsMetricsService, GpsMetricsSnapshot } from './services/gps-metrics.service';
 import { EtaService } from '../eta/eta.service';
+import { StopArrivalDetectorService } from '../notifications/services/stop-arrival-detector.service';
 import { IngestLocationDto } from './dto/ingest-location.dto';
 import { BatchIngestLocationDto } from './dto/batch-ingest-location.dto';
 import { QueryLocationHistoryDto } from './dto/query-location-history.dto';
@@ -40,6 +41,9 @@ export class LocationsService {
     @Optional()
     @Inject(forwardRef(() => EtaService))
     private readonly etaService?: EtaService,
+    @Optional()
+    @Inject(forwardRef(() => StopArrivalDetectorService))
+    private readonly stopArrivalDetector?: StopArrivalDetectorService,
   ) {}
 
   /**
@@ -107,6 +111,7 @@ export class LocationsService {
 
     // 5. Deduplication check (handle duplicate mobile network retries idempotently)
     const pingTime = new Date(dto.timestamp);
+    const previousDedup = this.deduplicationService.getRecentPing(tripId);
     const dedup = this.deduplicationService.check(tripId, dto.latitude, dto.longitude, pingTime);
 
     if (dedup.isDuplicate && latestLocation) {
@@ -117,9 +122,14 @@ export class LocationsService {
 
     // 6. Comprehensive Validation Pipeline (Coordinates, Timestamp, Accuracy, Teleportation)
     let validationResult;
+    const currentSignature = `${tripId}:${pingTime.getTime()}:${dto.latitude.toFixed(6)}:${dto.longitude.toFixed(6)}`;
     try {
       validationResult = this.validatorService.validatePayload(dto, latestLocation);
     } catch (err) {
+      const currentRecent = this.deduplicationService.getRecentPing(tripId);
+      if (currentRecent?.signature === currentSignature) {
+        this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      }
       this.metricsService.recordRejected();
       throw err;
     }
@@ -128,17 +138,29 @@ export class LocationsService {
       this.metricsService.recordSuspicious();
     }
 
-    // 7. Persist Validated Telemetry Record
-    const location = await this.locationsRepository.create({
-      busId: trip.busId,
-      tripId,
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-      speed: dto.speed,
-      heading: dto.heading,
-      accuracy: dto.accuracy,
-      timestamp: pingTime,
-    });
+    // 7. Persist Validated Telemetry Record with Rollback on DB Error
+    let location: LiveLocation;
+    try {
+      location = await this.locationsRepository.create({
+        busId: trip.busId,
+        tripId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        speed: dto.speed,
+        heading: dto.heading,
+        accuracy: dto.accuracy,
+        timestamp: pingTime,
+      });
+    } catch (dbError) {
+      const currentRecent = this.deduplicationService.getRecentPing(tripId);
+      if (currentRecent?.signature === currentSignature) {
+        this.deduplicationService.restoreRecentPing(tripId, previousDedup);
+      }
+      this.logger.error(
+        `Failed to persist GPS telemetry for trip ${tripId}. In-memory state preserved without corruption: ${(dbError as Error).message}`,
+      );
+      throw dbError;
+    }
 
     this.metricsService.recordAccepted();
 
@@ -201,7 +223,16 @@ export class LocationsService {
       isMoving: location.speed !== null && (location.speed ?? 0) > 2.0,
     });
 
-    // 10. Asynchronously update ETA prediction state in the background (fire-and-forget, non-blocking)
+    // 10. Evaluate stop arrival detection in the background (fire-and-forget, non-blocking)
+    if (this.stopArrivalDetector) {
+      this.stopArrivalDetector
+        .evaluate(trip, location)
+        .catch((err) =>
+          this.logger.debug(`Background stop arrival detection error: ${err?.message ?? err}`),
+        );
+    }
+
+    // 11. Asynchronously update ETA prediction state in the background (fire-and-forget, non-blocking)
     if (this.etaService) {
       this.etaService
         .recalculateAndBroadcast(trip.id)

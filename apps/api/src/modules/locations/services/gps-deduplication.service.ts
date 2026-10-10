@@ -76,9 +76,34 @@ export class GpsDeduplicationService {
   }
 
   /**
+   * Retrieves previous recorded ping state for rollback support.
+   */
+  getRecentPing(
+    tripId: string,
+  ): { signature: string; latitude: number; longitude: number; timestamp: number } | undefined {
+    const entry = this.recentPings.get(tripId);
+    return entry ? { ...entry } : undefined;
+  }
+
+  /**
+   * Restores previous deduplication state if database write fails.
+   */
+  restoreRecentPing(
+    tripId: string,
+    previous?: { signature: string; latitude: number; longitude: number; timestamp: number },
+  ): void {
+    if (previous) {
+      this.recentPings.set(tripId, previous);
+    } else {
+      this.recentPings.delete(tripId);
+    }
+  }
+
+  /**
    * Resets deduplication state for a trip (e.g. upon trip completion)
    */
   clearTrip(tripId: string): void {
     this.recentPings.delete(tripId);
   }
 }
+

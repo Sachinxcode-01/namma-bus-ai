@@ -4,10 +4,23 @@
     "moduleResolution": "node",
     "target": "ES2021",
     "baseUrl": ".",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
-      "@prisma/client": ["./apps/api/node_modules/@prisma/client"],
-      ".prisma/client/*": ["./apps/api/node_modules/.prisma/client/*"],
-      "@nammabus/shared-types": ["./packages/shared-types/src/index.ts"]
+      "@prisma/client": [
+        "./apps/api/node_modules/.prisma/client",
+        "./apps/api/node_modules/@prisma/client",
+        "./node_modules/.prisma/client",
+        "./node_modules/@prisma/client"
+      ],
+      ".prisma/client/*": [
+        "./apps/api/node_modules/.prisma/client/*",
+        "./node_modules/.prisma/client/*"
+      ],
+      "@nammabus/shared-types": ["./packages/shared-types/src/index.ts"],
+      "@nammabus/api-client": ["./packages/api-client/src/index.ts"],
+      "@nammabus/ui-components": ["./packages/ui-components/src/index.ts"]
     },
     "skipLibCheck": true
   },
@@ -17,6 +30,8 @@
   ],
   "exclude": [
     "**/node_modules",
-    "**/dist"
+    "**/dist",
+    "apps/student-mobile",
+    "apps/driver-mobile"
   ]
 }

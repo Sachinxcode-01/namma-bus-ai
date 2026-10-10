@@ -1,6 +1,15 @@
-import { Injectable, Logger, MessageEvent, OnModuleDestroy } from '@nestjs/common';
-import { Observable, Subject, interval, merge } from 'rxjs';
-import { filter, map, finalize, share } from 'rxjs/operators';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  MessageEvent,
+  OnModuleInit,
+  OnModuleDestroy,
+  Optional,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Observable, Subject, interval, merge, timer } from 'rxjs';
+import { filter, map, finalize, share, takeUntil } from 'rxjs/operators';
 import { LiveLocation } from '@prisma/client';
 import { GPS_CONFIG } from './constants/gps.constants';
 import {
@@ -9,6 +18,12 @@ import {
   LiveLocationBroadcastEvent,
 } from './domain/gps-telemetry.types';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import {
+  REALTIME_BUS,
+  RealtimeBus,
+  RealtimeSubscription,
+} from '../realtime/interfaces/realtime-bus.interface';
+import { REALTIME_CHANNELS, REALTIME_DEFAULTS } from '../realtime/constants/realtime.constants';
 
 export type LiveLocationEvent = LiveLocation & {
   busNumber?: string;
@@ -18,23 +33,58 @@ export type LiveLocationEvent = LiveLocation & {
 };
 
 @Injectable()
-export class LocationStreamService implements OnModuleDestroy {
+export class LocationStreamService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(LocationStreamService.name);
   private readonly locationSubject = new Subject<LiveLocationBroadcastEvent>();
+  private busSubscription: RealtimeSubscription | null = null;
   private activeConnections = 0;
 
+  constructor(
+    @Inject(REALTIME_BUS)
+    private readonly realtimeBus: RealtimeBus,
+    @Optional()
+    private readonly configService?: ConfigService,
+  ) {}
+
+  onModuleInit(): void {
+    this.logger.log('Subscribing LocationStreamService to distributed realtime bus channel');
+    this.busSubscription = this.realtimeBus.subscribe(
+      REALTIME_CHANNELS.LOCATIONS,
+      (payload: unknown) => {
+        try {
+          const event = payload as LiveLocationBroadcastEvent;
+          this.locationSubject.next(event);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.error(`Failed to handle incoming distributed location payload: ${msg}`);
+        }
+      },
+    );
+  }
+
   onModuleDestroy(): void {
+    if (this.busSubscription) {
+      this.busSubscription.unsubscribe();
+      this.busSubscription = null;
+    }
     this.locationSubject.complete();
   }
 
+  private getMaxConnectionLifetimeMs(): number {
+    return (
+      this.configService?.get<number>('realtime.maxConnectionLifetimeMs') ||
+      REALTIME_DEFAULTS.DEFAULT_MAX_CONNECTION_LIFETIME_MS
+    );
+  }
+
   /**
-   * Broadcasts an accepted GPS location event across all active real-time channels.
+   * Broadcasts an accepted GPS location event across the distributed real-time backbone.
    */
   emitLocation(event: LiveLocationBroadcastEvent): void {
     this.logger.debug(
-      `Broadcasting GPS event for trip ${event.tripId} (Bus: ${event.busNumber}): [${event.latitude}, ${event.longitude}]`,
+      `Publishing GPS event for trip ${event.tripId} (Bus: ${event.busNumber}): [${event.latitude}, ${event.longitude}]`,
     );
-    this.locationSubject.next(event);
+    this.realtimeBus.publish(REALTIME_CHANNELS.LOCATIONS, event);
   }
 
   /**
@@ -46,8 +96,9 @@ export class LocationStreamService implements OnModuleDestroy {
     _user?: AuthenticatedUser,
   ): Observable<MessageEvent> {
     this.activeConnections++;
+    const lifetimeMs = this.getMaxConnectionLifetimeMs();
     this.logger.debug(
-      `Client subscribed to trip ${tripId} stream. Active connections: ${this.activeConnections}`,
+      `Client subscribed to trip ${tripId} stream. Active connections: ${this.activeConnections} (Max lifetime: ${lifetimeMs}ms)`,
     );
 
     // Heartbeat ping stream to keep SSE connection alive through proxies
@@ -83,6 +134,7 @@ export class LocationStreamService implements OnModuleDestroy {
     );
 
     return merge(...initial$, live$, heartbeat$).pipe(
+      takeUntil(timer(lifetimeMs)),
       finalize(() => {
         this.activeConnections = Math.max(0, this.activeConnections - 1);
         this.logger.debug(
@@ -102,6 +154,7 @@ export class LocationStreamService implements OnModuleDestroy {
     _user?: AuthenticatedUser,
   ): Observable<MessageEvent> {
     this.activeConnections++;
+    const lifetimeMs = this.getMaxConnectionLifetimeMs();
     this.logger.debug(
       `Client subscribed to bus ${busId} stream. Active: ${this.activeConnections}`,
     );
@@ -137,6 +190,7 @@ export class LocationStreamService implements OnModuleDestroy {
     );
 
     return merge(...initial$, live$, heartbeat$).pipe(
+      takeUntil(timer(lifetimeMs)),
       finalize(() => {
         this.activeConnections = Math.max(0, this.activeConnections - 1);
         this.logger.debug(
@@ -152,6 +206,7 @@ export class LocationStreamService implements OnModuleDestroy {
    */
   getRouteStream(routeCode: string, _user?: AuthenticatedUser): Observable<MessageEvent> {
     this.activeConnections++;
+    const lifetimeMs = this.getMaxConnectionLifetimeMs();
 
     const heartbeat$ = interval(GPS_CONFIG.SSE_HEARTBEAT_INTERVAL_MS).pipe(
       map(() => ({
@@ -170,6 +225,7 @@ export class LocationStreamService implements OnModuleDestroy {
     );
 
     return merge(live$, heartbeat$).pipe(
+      takeUntil(timer(lifetimeMs)),
       finalize(() => {
         this.activeConnections = Math.max(0, this.activeConnections - 1);
       }),
@@ -178,10 +234,11 @@ export class LocationStreamService implements OnModuleDestroy {
   }
 
   /**
-   * Real-time SSE stream for entire fleet (Fleet Monitoring).
+   * Real-time SSE stream for entire fleet (Fleet Monitoring - Admin Only).
    */
   getFleetStream(_user?: AuthenticatedUser): Observable<MessageEvent> {
     this.activeConnections++;
+    const lifetimeMs = this.getMaxConnectionLifetimeMs();
 
     const heartbeat$ = interval(GPS_CONFIG.SSE_HEARTBEAT_INTERVAL_MS).pipe(
       map(() => ({
@@ -199,6 +256,7 @@ export class LocationStreamService implements OnModuleDestroy {
     );
 
     return merge(live$, heartbeat$).pipe(
+      takeUntil(timer(lifetimeMs)),
       finalize(() => {
         this.activeConnections = Math.max(0, this.activeConnections - 1);
       }),
@@ -212,5 +270,9 @@ export class LocationStreamService implements OnModuleDestroy {
 
   getActiveConnectionsCount(): number {
     return this.activeConnections;
+  }
+
+  decrementConnectionCount(): void {
+    this.activeConnections = Math.max(0, this.activeConnections - 1);
   }
 }
