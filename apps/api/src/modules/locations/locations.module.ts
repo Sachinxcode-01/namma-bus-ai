@@ -9,10 +9,11 @@ import { LiveTrackingService } from './services/live-tracking.service';
 import { GpsMetricsService } from './services/gps-metrics.service';
 import { TripsModule } from '../trips/trips.module';
 import { EtaModule } from '../eta/eta.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 
 @Module({
-  imports: [TripsModule, forwardRef(() => EtaModule)],
+  imports: [TripsModule, forwardRef(() => EtaModule), forwardRef(() => NotificationsModule)],
   controllers: [LocationsController],
   providers: [
     LocationsService,

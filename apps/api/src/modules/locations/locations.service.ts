@@ -8,6 +8,7 @@ import { GpsDeduplicationService } from './services/gps-deduplication.service';
 import { LiveTrackingService } from './services/live-tracking.service';
 import { GpsMetricsService, GpsMetricsSnapshot } from './services/gps-metrics.service';
 import { EtaService } from '../eta/eta.service';
+import { StopArrivalDetectorService } from '../notifications/services/stop-arrival-detector.service';
 import { IngestLocationDto } from './dto/ingest-location.dto';
 import { BatchIngestLocationDto } from './dto/batch-ingest-location.dto';
 import { QueryLocationHistoryDto } from './dto/query-location-history.dto';
@@ -40,6 +41,9 @@ export class LocationsService {
     @Optional()
     @Inject(forwardRef(() => EtaService))
     private readonly etaService?: EtaService,
+    @Optional()
+    @Inject(forwardRef(() => StopArrivalDetectorService))
+    private readonly stopArrivalDetector?: StopArrivalDetectorService,
   ) {}
 
   /**
@@ -201,7 +205,16 @@ export class LocationsService {
       isMoving: location.speed !== null && (location.speed ?? 0) > 2.0,
     });
 
-    // 10. Asynchronously update ETA prediction state in the background (fire-and-forget, non-blocking)
+    // 10. Evaluate stop arrival detection in the background (fire-and-forget, non-blocking)
+    if (this.stopArrivalDetector) {
+      this.stopArrivalDetector
+        .evaluate(trip, location)
+        .catch((err) =>
+          this.logger.debug(`Background stop arrival detection error: ${err?.message ?? err}`),
+        );
+    }
+
+    // 11. Asynchronously update ETA prediction state in the background (fire-and-forget, non-blocking)
     if (this.etaService) {
       this.etaService
         .recalculateAndBroadcast(trip.id)

@@ -30,13 +30,21 @@ enum StopEventType {
 
 enum NotificationType {
   TRIP_STARTED
+  TRIP_COMPLETED
   ETA_10_MIN
   STOP_REACHED
   DELAY
   CANCELLATION
   BREAKDOWN
+  SOS
   ROUTE_ANOMALY
   BROADCAST
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 enum IncidentType {
@@ -73,6 +81,8 @@ model User {
   driver       Driver?
   refreshTokens RefreshToken[]
   notifications Notification[]
+  deviceTokens  DeviceToken[]
+  notificationPreference NotificationPreference?
   reportedIncidents Incident[]
   auditLogs    AuditLog[]
 
@@ -242,6 +252,7 @@ model StopEvent {
   trip      Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
   stop      Stop          @relation(fields: [stopId], references: [id], onDelete: Restrict)
 
+  @@unique([tripId, stopId, eventType])
   @@index([tripId, stopId])
   @@index([timestamp])
   @@map("stop_events")
@@ -268,19 +279,24 @@ model Subscription {
 }
 
 model Notification {
-  id          String           @id @default(uuid())
-  recipientId String
-  tripId      String?
-  type        NotificationType
-  title       String
-  body        String
-  isRead      Boolean          @default(false)
-  metadata    Json?
-  createdAt   DateTime         @default(now())
+  id               String                 @id @default(uuid())
+  recipientId      String
+  tripId           String?
+  type             NotificationType
+  title            String
+  body             String
+  isRead           Boolean                @default(false)
+  readAt           DateTime?
+  deduplicationKey String?
+  metadata         Json?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
-  recipient   User             @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  trip        Trip?            @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  recipient        User                   @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  trip             Trip?                  @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  deliveries       NotificationDelivery[]
 
+  @@unique([recipientId, deduplicationKey])
   @@index([recipientId, isRead])
   @@index([tripId])
   @@index([createdAt])
@@ -342,3 +358,58 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+model DeviceToken {
+  id          String                 @id @default(uuid())
+  userId      String
+  token       String                 @unique
+  platform    String?
+  deviceModel String?
+  isActive    Boolean                @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries  NotificationDelivery[]
+
+  @@index([userId, isActive])
+  @@map("device_tokens")
+}
+
+model NotificationDelivery {
+  id             String         @id @default(uuid())
+  notificationId String
+  deviceTokenId  String?
+  channel        String         @default("FCM")
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int            @default(0)
+  lastError      String?
+  providerMsgId  String?
+  sentAt         DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  notification   Notification   @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  deviceToken    DeviceToken?   @relation(fields: [deviceTokenId], references: [id], onDelete: SetNull)
+
+  @@index([notificationId])
+  @@index([status])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  id                         String   @id @default(uuid())
+  userId                     String   @unique
+  etaAlertsEnabled           Boolean  @default(true)
+  arrivalAlertsEnabled       Boolean  @default(true)
+  tripLifecycleAlertsEnabled Boolean  @default(true)
+  incidentAlertsEnabled      Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+

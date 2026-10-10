@@ -5,7 +5,10 @@
     "target": "ES2021",
     "baseUrl": ".",
     "paths": {
-      "@prisma/client": ["./apps/api/node_modules/@prisma/client"],
+      "@prisma/client": [
+        "./apps/api/node_modules/.prisma/client",
+        "./apps/api/node_modules/@prisma/client"
+      ],
       ".prisma/client/*": ["./apps/api/node_modules/.prisma/client/*"],
       "@nammabus/shared-types": ["./packages/shared-types/src/index.ts"]
     },

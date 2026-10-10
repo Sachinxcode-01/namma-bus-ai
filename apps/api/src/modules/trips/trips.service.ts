@@ -1,9 +1,11 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { TripStatus, UserRole, StopEvent } from '@prisma/client';
 import { TripsRepository, TripSummary, TripDetail, TripStopProgress } from './trips.repository';
 import { BusesRepository } from '../buses/buses.repository';
 import { DriversRepository } from '../drivers/drivers.repository';
 import { RoutesRepository } from '../routes/routes.repository';
+import { NotificationsService } from '../notifications/notifications.service';
+import { StopArrivalDetectorService } from '../notifications/services/stop-arrival-detector.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { QueryTripsDto } from './dto/query-trips.dto';
 import { RecordStopEventDto } from './dto/record-stop-event.dto';
@@ -26,6 +28,12 @@ export class TripsService {
     private readonly busesRepository: BusesRepository,
     private readonly driversRepository: DriversRepository,
     private readonly routesRepository: RoutesRepository,
+    @Optional()
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService?: NotificationsService,
+    @Optional()
+    @Inject(forwardRef(() => StopArrivalDetectorService))
+    private readonly stopArrivalDetector?: StopArrivalDetectorService,
   ) {}
 
   async create(dto: CreateTripDto): Promise<TripSummary> {
@@ -160,7 +168,17 @@ export class TripsService {
     const now = new Date();
     this.logger.log(`Starting trip ${id} at ${now.toISOString()}`);
 
-    return this.tripsRepository.startTripAtomic(id, trip.busId, trip.driverId, now);
+    const started = await this.tripsRepository.startTripAtomic(id, trip.busId, trip.driverId, now);
+
+    if (this.notificationsService) {
+      this.notificationsService
+        .handleTripStarted(started)
+        .catch((err) =>
+          this.logger.debug(`Background trip started alert error: ${err?.message ?? err}`),
+        );
+    }
+
+    return started;
   }
 
   async endTrip(id: string, currentUser: AuthenticatedUser): Promise<TripDetail> {
@@ -189,10 +207,24 @@ export class TripsService {
     const now = new Date();
     this.logger.log(`Ending trip ${id} at ${now.toISOString()}`);
 
-    return this.tripsRepository.update(id, {
+    const completed = await this.tripsRepository.update(id, {
       status: TripStatus.COMPLETED,
       actualEndTime: now,
     });
+
+    if (this.stopArrivalDetector) {
+      this.stopArrivalDetector.resetTripState(id);
+    }
+
+    if (this.notificationsService) {
+      this.notificationsService
+        .handleTripCompleted(completed)
+        .catch((err) =>
+          this.logger.debug(`Background trip completed alert error: ${err?.message ?? err}`),
+        );
+    }
+
+    return completed;
   }
 
   async cancelTrip(id: string, currentUser: AuthenticatedUser): Promise<TripDetail> {
@@ -219,9 +251,15 @@ export class TripsService {
 
     this.logger.log(`Cancelling trip ${id} by user ${currentUser.id}`);
 
-    return this.tripsRepository.update(id, {
+    const cancelled = await this.tripsRepository.update(id, {
       status: TripStatus.CANCELLED,
     });
+
+    if (this.stopArrivalDetector) {
+      this.stopArrivalDetector.resetTripState(id);
+    }
+
+    return cancelled;
   }
 
   async recordStopEvent(

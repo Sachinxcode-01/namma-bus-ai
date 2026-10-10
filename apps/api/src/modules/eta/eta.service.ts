@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { TripStatus } from '@prisma/client';
 import { TripsRepository } from '../trips/trips.repository';
 import { LocationsRepository } from '../locations/locations.repository';
 import { EtaCalculatorService } from './services/eta-calculator.service';
 import { EtaCacheService } from './services/eta-cache.service';
 import { EtaStreamService } from './services/eta-stream.service';
+import { EtaAlertEvaluatorService } from '../notifications/services/eta-alert-evaluator.service';
 import {
   EtaConfidence,
   EtaStatus,
@@ -36,6 +37,9 @@ export class EtaService {
     private readonly etaCalculator: EtaCalculatorService,
     private readonly etaCache: EtaCacheService,
     private readonly etaStream: EtaStreamService,
+    @Optional()
+    @Inject(forwardRef(() => EtaAlertEvaluatorService))
+    private readonly etaAlertEvaluator?: EtaAlertEvaluatorService,
   ) {}
 
   /**
@@ -136,6 +140,15 @@ export class EtaService {
         };
 
         this.etaStream.emitEtaUpdate(broadcastEvent);
+      }
+
+      // Asynchronously evaluate ~10-minute arrival alert thresholds
+      if (this.etaAlertEvaluator) {
+        this.etaAlertEvaluator
+          .evaluate(result)
+          .catch((err) =>
+            this.logger.debug(`Background ETA alert evaluation error: ${err?.message ?? err}`),
+          );
       }
 
       return result;

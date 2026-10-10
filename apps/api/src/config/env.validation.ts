@@ -17,6 +17,11 @@ export const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
+  ETA_ALERT_THRESHOLD_MINUTES: z.coerce.number().int().positive().default(10),
+  STOP_ARRIVAL_GEOFENCE_RADIUS_METERS: z.coerce.number().positive().default(50.0),
+  CONSECUTIVE_PINGS_FOR_ARRIVAL: z.coerce.number().int().positive().default(2),
+  MAX_ARRIVAL_GPS_ACCURACY_METERS: z.coerce.number().positive().default(50.0),
+  NOTIFICATION_MAX_RETRY_ATTEMPTS: z.coerce.number().int().positive().default(3),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

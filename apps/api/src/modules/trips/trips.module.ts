@@ -6,9 +6,16 @@ import { BusesModule } from '../buses/buses.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { RoutesModule } from '../routes/routes.module';
 import { LocationsModule } from '../locations/locations.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [BusesModule, DriversModule, RoutesModule, forwardRef(() => LocationsModule)],
+  imports: [
+    BusesModule,
+    DriversModule,
+    RoutesModule,
+    forwardRef(() => LocationsModule),
+    forwardRef(() => NotificationsModule),
+  ],
   controllers: [TripsController],
   providers: [TripsService, TripsRepository],
   exports: [TripsService, TripsRepository],
