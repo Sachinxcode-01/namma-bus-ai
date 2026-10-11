@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Button } from './Button';
+import { IconClose } from './icons';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -47,9 +48,9 @@ export const Modal: React.FC<ModalProps> = ({
         display: 'flex',
         alignItems: isBottomSheet ? 'flex-end' : 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.82)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         padding: isBottomSheet ? '0' : '16px',
         animation: 'nb-fade-in 0.2s ease',
       }}
@@ -65,10 +66,11 @@ export const Modal: React.FC<ModalProps> = ({
           width: '100%',
           maxWidth: isBottomSheet ? '100%' : '520px',
           maxHeight: isBottomSheet ? '88vh' : '85vh',
-          backgroundColor: 'var(--nb-bg-surface-elevated, #1a2234)',
-          border: '1px solid var(--nb-border-bright, rgba(255, 255, 255, 0.18))',
-          borderRadius: isBottomSheet ? '24px 24px 0 0' : 'var(--nb-radius-xl, 20px)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+          backgroundColor: '#0a0a0a',
+          border: '1px solid rgba(255, 255, 255, 0.10)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.22)',
+          borderRadius: isBottomSheet ? '16px 16px 0 0' : '14px',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -79,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div
           style={{
             padding: '18px 22px',
-            borderBottom: '1px solid var(--nb-border-subtle, rgba(255, 255, 255, 0.08))',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -91,7 +93,9 @@ export const Modal: React.FC<ModalProps> = ({
               style={{
                 fontSize: '1.15rem',
                 fontWeight: 700,
-                color: 'var(--nb-text-primary, #f8fafc)',
+                color: '#ffffff',
+                letterSpacing: '-0.02em',
+                margin: 0,
               }}
             >
               {title}
@@ -99,9 +103,9 @@ export const Modal: React.FC<ModalProps> = ({
             {description && (
               <p
                 style={{
-                  fontSize: '0.82rem',
-                  color: 'var(--nb-text-secondary, #94a3b8)',
-                  marginTop: '2px',
+                  fontSize: '0.80rem',
+                  color: '#888888',
+                  marginTop: '3px',
                 }}
               >
                 {description}
@@ -114,17 +118,17 @@ export const Modal: React.FC<ModalProps> = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--nb-text-muted, #64748b)',
-              fontSize: '1.25rem',
+              color: '#888888',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'color 0.15s ease',
             }}
           >
-            ✕
+            <IconClose size={16} />
           </button>
         </div>
 
@@ -134,25 +138,39 @@ export const Modal: React.FC<ModalProps> = ({
             padding: '22px',
             overflowY: 'auto',
             flex: 1,
-            color: 'var(--nb-text-primary, #f8fafc)',
+            color: '#ededed',
           }}
         >
           {children}
         </div>
 
         {/* Footer */}
-        {footer && (
+        {footer ? (
           <div
             style={{
               padding: '16px 22px',
-              borderTop: '1px solid var(--nb-border-subtle, rgba(255, 255, 255, 0.08))',
-              backgroundColor: 'rgba(15, 23, 42, 0.5)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '10px',
+              backgroundColor: '#050505',
             }}
           >
             {footer}
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: '14px 22px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              backgroundColor: '#050505',
+            }}
+          >
+            <Button variant="secondary" size="sm" onClick={onClose}>
+              Dismiss
+            </Button>
           </div>
         )}
       </div>

@@ -280,15 +280,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               strokeWidth="3"
               filter="url(#neonGlow)"
             />
-            {/* Bus Emoji / Icon */}
-            <text
-              textAnchor="middle"
-              y="5"
-              fontSize="14"
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              🚌
-            </text>
+            {/* Bus Vector Marker */}
+            <g transform="translate(-7, -7)">
+              <rect width="14" height="14" rx="3" fill="#ffffff" />
+              <rect x="2" y="3" width="10" height="4" rx="1" fill="#000000" />
+              <circle cx="4" cy="11" r="1.5" fill="#000000" />
+              <circle cx="10" cy="11" r="1.5" fill="#000000" />
+            </g>
             {/* Bus Identifier Badge */}
             <g transform="translate(0, -26)">
               <rect
@@ -324,20 +322,25 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             top: '12px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(239, 68, 68, 0.88)',
+            background: 'rgba(255, 0, 128, 0.90)',
             color: '#ffffff',
-            padding: '6px 14px',
+            padding: '5px 14px',
             borderRadius: '9999px',
-            fontSize: '0.78rem',
+            fontSize: '0.74rem',
             fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
-            backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 16px rgba(255, 0, 128, 0.35)',
+            backdropFilter: 'blur(12px)',
+            letterSpacing: '0.02em',
           }}
         >
-          <span style={{ fontSize: '0.85rem' }}>⚠️</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
           <span>STALE GPS: Signal delayed</span>
         </div>
       )}
@@ -350,26 +353,26 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           right: '12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
+          gap: '6px',
         }}
       >
         <button
           onClick={() => setZoomLevel((z) => Math.min(z + 0.3, 2.5))}
           title="Zoom In"
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'rgba(30, 41, 59, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            color: '#f8fafc',
-            fontSize: '18px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '6px',
+            background: 'rgba(10, 10, 10, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            color: '#ededed',
+            fontSize: '16px',
             fontWeight: 'bold',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            backdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(12px)',
           }}
         >
           +
@@ -378,19 +381,19 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           onClick={() => setZoomLevel((z) => Math.max(z - 0.3, 0.7))}
           title="Zoom Out"
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'rgba(30, 41, 59, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            color: '#f8fafc',
-            fontSize: '18px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '6px',
+            background: 'rgba(10, 10, 10, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            color: '#ededed',
+            fontSize: '16px',
             fontWeight: 'bold',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            backdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(12px)',
           }}
         >
           -
@@ -399,21 +402,26 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           onClick={handleRecenter}
           title="Recenter Map"
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'rgba(30, 41, 59, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            color: '#60a5fa',
-            fontSize: '14px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '6px',
+            background: 'rgba(10, 10, 10, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            color: '#0070f3',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            backdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(12px)',
           }}
         >
-          🎯
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="22" y1="12" x2="18" y2="12" />
+            <line x1="6" y1="12" x2="2" y2="12" />
+            <line x1="12" y1="6" x2="12" y2="2" />
+            <line x1="12" y1="22" x2="12" y2="18" />
+          </svg>
         </button>
       </div>
 
@@ -423,24 +431,24 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           position: 'absolute',
           bottom: '12px',
           left: '12px',
-          background: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(10, 10, 10, 0.82)',
+          backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '8px',
-          padding: '6px 10px',
-          fontSize: '0.72rem',
-          color: 'var(--nb-text-secondary, #94a3b8)',
+          borderRadius: '6px',
+          padding: '5px 10px',
+          fontSize: '0.70rem',
+          color: '#888888',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fbbf24' }} />
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f5a623' }} />
           Bus
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }} />
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0070f3' }} />
           Stop
         </span>
       </div>

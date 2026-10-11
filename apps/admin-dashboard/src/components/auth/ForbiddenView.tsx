@@ -16,25 +16,41 @@ export const ForbiddenView: React.FC<ForbiddenViewProps> = ({ userEmail, onLogou
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        backgroundColor: '#060913',
+        backgroundColor: '#000000',
+        backgroundImage: `
+          radial-gradient(circle at 50% 30%, rgba(255, 0, 128, 0.12) 0%, transparent 60%),
+          radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px)
+        `,
+        backgroundSize: '100% 100%, 24px 24px',
       }}
     >
       <Card
         variant="glass"
-        glow="rose"
         style={{
           maxWidth: '460px',
           width: '100%',
-          padding: '36px',
+          padding: '36px 30px',
           textAlign: 'center',
-          border: '1px solid rgba(239, 68, 68, 0.35)',
+          background: 'rgba(10, 10, 10, 0.90)',
+          border: '1px solid rgba(255, 0, 128, 0.35)',
+          borderTop: '1px solid rgba(255, 0, 128, 0.50)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 0, 128, 0.15)',
+          borderRadius: '16px',
         }}
       >
         <div
           style={{
-            fontSize: '48px',
+            width: '54px',
+            height: '54px',
+            borderRadius: '12px',
+            background: 'rgba(255, 0, 128, 0.12)',
+            border: '1px solid rgba(255, 0, 128, 0.35)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '26px',
             marginBottom: '16px',
-            lineHeight: 1,
+            boxShadow: '0 0 20px rgba(255, 0, 128, 0.25)',
           }}
         >
           🛡️
@@ -42,47 +58,48 @@ export const ForbiddenView: React.FC<ForbiddenViewProps> = ({ userEmail, onLogou
 
         <h1
           style={{
-            fontSize: '1.5rem',
-            fontWeight: 800,
-            color: '#f87171',
-            letterSpacing: '-0.01em',
+            fontSize: '1.45rem',
+            fontWeight: 700,
+            color: '#ffffff',
+            letterSpacing: '-0.025em',
             marginBottom: '8px',
           }}
         >
-          403 Forbidden: Admin Access Required
+          Access Restricted: 403 Forbidden
         </h1>
 
         <p
           style={{
-            fontSize: '0.88rem',
-            color: 'var(--nb-text-secondary, #94a3b8)',
+            fontSize: '0.86rem',
+            color: '#888888',
             lineHeight: 1.5,
             marginBottom: '20px',
           }}
         >
-          You are currently signed in as <strong style={{ color: '#f8fafc' }}>{userEmail}</strong>.
-          This account does not have college transport administrator permissions.
+          Authenticated as <strong style={{ color: '#ededed' }}>{userEmail}</strong>.
+          This identity is not granted root administrator permissions for the campus transit authority.
         </p>
 
         <div
           style={{
             padding: '14px',
-            borderRadius: '10px',
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            borderRadius: '8px',
+            backgroundColor: '#050505',
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            fontSize: '0.80rem',
-            color: '#94a3b8',
+            fontSize: '0.78rem',
+            color: '#888888',
             marginBottom: '24px',
             textAlign: 'left',
+            lineHeight: 1.6,
           }}
         >
-          <div>• If you are a Student, please use the <strong>Student Mobile / Web App</strong>.</div>
-          <div style={{ marginTop: '4px' }}>• If you are a Driver, please use the <strong>Driver Navigation App</strong>.</div>
-          <div style={{ marginTop: '4px' }}>• For administrative access, log in using your staff admin credentials.</div>
+          <div>• Students: Access transit live maps on the <strong>Student Web / Mobile App</strong>.</div>
+          <div>• Drivers: Transmit GPS updates through the <strong>Driver Navigation Terminal</strong>.</div>
+          <div>• Administrators: Sign in using an authorized root email.</div>
         </div>
 
         <Button variant="primary" size="md" fullWidth onClick={onLogout}>
-          Sign Out & Return to Login
+          Sign Out & Return to Terminal
         </Button>
       </Card>
     </div>

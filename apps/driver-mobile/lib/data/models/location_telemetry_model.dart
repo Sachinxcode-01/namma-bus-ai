@@ -56,6 +56,30 @@ class LocationTelemetryModel {
     return GpsSignalQuality.good;
   }
 
+  LocationTelemetryModel copyWith({
+    String? busId,
+    String? tripId,
+    double? latitude,
+    double? longitude,
+    double? speedKmh,
+    double? headingDegrees,
+    double? accuracyMeters,
+    DateTime? timestamp,
+    GpsSignalQuality? signalQuality,
+  }) {
+    return LocationTelemetryModel(
+      busId: busId ?? this.busId,
+      tripId: tripId ?? this.tripId,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      speedKmh: speedKmh ?? this.speedKmh,
+      headingDegrees: headingDegrees ?? this.headingDegrees,
+      accuracyMeters: accuracyMeters ?? this.accuracyMeters,
+      timestamp: timestamp ?? this.timestamp,
+      signalQuality: signalQuality ?? this.signalQuality,
+    );
+  }
+
   Map<String, dynamic> toApiPayload() => {
         'busId': busId,
         if (tripId != null) 'tripId': tripId,

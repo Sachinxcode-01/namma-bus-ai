@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Input } from '@nammabus/ui-components';
+import { Card, Badge, Button, Input, IconTrip, IconSearch, IconActivity, IconBus } from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
 import { TripEntity, TripStatus } from '@nammabus/shared-types';
 
@@ -105,13 +105,14 @@ export const TripMonitoring: React.FC<TripMonitoringProps> = ({ trips }) => {
         description="Live telemetry progression for active routes and historical trip records"
         badge={
           <Badge variant="active" size="sm">
+            <IconTrip size={13} style={{ marginRight: 5 }} />
             {allTrips.filter((t) => t.status === TripStatus.ACTIVE).length} ACTIVE
           </Badge>
         }
       />
 
       {/* Tabs Switcher and Search */}
-      <Card variant="surface" style={{ padding: '16px 20px' }}>
+      <Card variant="surface" style={{ padding: '16px 20px', background: '#0a0a0a', border: '1px solid rgba(255, 255, 255, 0.08)', borderTop: '1px solid rgba(255, 255, 255, 0.16)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
             <Button
@@ -138,6 +139,7 @@ export const TripMonitoring: React.FC<TripMonitoringProps> = ({ trips }) => {
 
           <div style={{ width: '260px' }}>
             <Input
+              icon={<IconSearch size={14} color="#666666" />}
               placeholder="Search by Trip ID or Bus..."
               value={searchQuery}
               onChange={(e) => {

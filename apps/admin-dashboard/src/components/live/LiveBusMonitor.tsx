@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Select } from '@nammabus/ui-components';
+import {
+  Card,
+  Badge,
+  Button,
+  Select,
+  InteractiveMap,
+  IconBus,
+  IconTrip,
+  IconRadar,
+  IconDriver,
+  IconActivity,
+  IconAlertCircle,
+  IconRoute,
+} from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
-import { InteractiveMap } from '@nammabus/ui-components';
 import {
   BusEntity,
   StopEntity,
@@ -64,25 +76,25 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
       case 'live':
         return (
           <Badge variant="active" size="sm" pulse>
-            ⚡ SSE LIVE ({fleetStream.activeBusesCount} active)
+            SSE LIVE ({fleetStream.activeBusesCount} active)
           </Badge>
         );
       case 'stale':
         return (
           <Badge variant="warning" size="sm" pulse>
-            SSE STREAM STALE
+            STREAM STALE
           </Badge>
         );
       case 'connecting':
         return (
           <Badge variant="neutral" size="sm">
-            CONNECTING STREAM...
+            CONNECTING...
           </Badge>
         );
       case 'error':
         return (
           <Badge variant="danger" size="sm">
-            STREAM DISCONNECTED
+            DISCONNECTED
           </Badge>
         );
       default:
@@ -118,8 +130,13 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
               }))}
               style={{ minWidth: '220px' }}
             />
-            <Button variant="secondary" size="sm" onClick={refreshNow}>
-              ↻ Refresh Telemetry
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<IconActivity size={14} />}
+              onClick={refreshNow}
+            >
+              Sync Telemetry
             </Button>
           </div>
         }
@@ -131,11 +148,11 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
           role="alert"
           style={{
             padding: '12px 16px',
-            borderRadius: '10px',
-            backgroundColor: 'rgba(245, 158, 11, 0.12)',
-            border: '1px solid rgba(245, 158, 11, 0.35)',
-            color: '#fbbf24',
-            fontSize: '0.86rem',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(245, 166, 35, 0.10)',
+            border: '1px solid rgba(245, 166, 35, 0.30)',
+            color: '#f5a623',
+            fontSize: '0.84rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -144,87 +161,145 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>⚠️</span>
+            <IconAlertCircle size={16} color="#f5a623" />
             <span>
-              <strong>GPS Telemetry Notice:</strong> Last location ping was recorded{' '}
-              {secondsAgo} seconds ago. Driver phone may be passing through a low-signal cellular tunnel.
+              <strong>GPS Telemetry Notice:</strong> Last location ping recorded{' '}
+              {secondsAgo}s ago. Transit unit may be passing through a low-signal cellular corridor.
               {streamError && ` (${streamError})`}
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={refreshNow} style={{ color: '#fbbf24' }}>
+          <Button variant="ghost" size="sm" onClick={refreshNow} style={{ color: '#f5a623' }}>
             Retry Sync
           </Button>
         </div>
       )}
 
-      {/* Telemetry Status Strip */}
+      {/* Telemetry Status Strip (Vercel Style) */}
       <div className="nb-telemetry-strip">
-        <Card variant="surface" style={{ padding: '14px 18px', flex: 1 }}>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-            Vehicle Details
+        <Card
+          variant="surface"
+          style={{
+            padding: '16px 18px',
+            flex: 1,
+            background: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.70rem', color: '#888888', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>
+              Vehicle Identifier
+            </span>
+            <IconBus size={15} color="#0070f3" />
           </div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff', marginTop: '4px', letterSpacing: '-0.02em' }}>
             {selectedBus?.busNumber || 'NB-01'}
           </div>
-          <div style={{ fontSize: '0.78rem', color: '#fbbf24', fontFamily: 'var(--nb-font-mono)' }}>
+          <div style={{ fontSize: '0.76rem', color: '#888888', fontFamily: 'var(--nb-font-mono)', marginTop: '2px' }}>
             {selectedBus?.registrationNumber || 'KA-01-EQ-1024'}
           </div>
         </Card>
 
-        <Card variant="surface" style={{ padding: '14px 18px', flex: 1 }}>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-            Speed & Heading
+        <Card
+          variant="surface"
+          style={{
+            padding: '16px 18px',
+            flex: 1,
+            background: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.70rem', color: '#888888', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>
+              Speed & Heading
+            </span>
+            <IconTrip size={15} color="#00e599" />
           </div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#00e599', marginTop: '4px', letterSpacing: '-0.02em', fontFamily: 'var(--nb-font-mono)' }}>
             {liveLocation?.speed ? `${liveLocation.speed.toFixed(1)} km/h` : '28.5 km/h'}
           </div>
-          <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-            Heading: {liveLocation?.heading || 65}° NE
+          <div style={{ fontSize: '0.76rem', color: '#888888', marginTop: '2px' }}>
+            Bearing: {liveLocation?.heading || 65}° NE
           </div>
         </Card>
 
-        <Card variant="surface" style={{ padding: '14px 18px', flex: 1 }}>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-            GPS Coordinates
+        <Card
+          variant="surface"
+          style={{
+            padding: '16px 18px',
+            flex: 1,
+            background: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.70rem', color: '#888888', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>
+              GPS Coordinate Lock
+            </span>
+            <IconRadar size={15} color="#f5a623" />
           </div>
           <div
             style={{
-              fontSize: '0.98rem',
-              fontWeight: 700,
-              color: '#f8fafc',
-              marginTop: '4px',
+              fontSize: '0.94rem',
+              fontWeight: 600,
+              color: '#ededed',
+              marginTop: '6px',
               fontFamily: 'var(--nb-font-mono)',
             }}
           >
             {liveLocation ? `${liveLocation.latitude.toFixed(5)}, ${liveLocation.longitude.toFixed(5)}` : '12.97850, 77.60450'}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#10b981' }}>
+          <div style={{ fontSize: '0.74rem', color: '#00e599', marginTop: '2px' }}>
             Accuracy: ±{liveLocation?.accuracy || 8}m radius
           </div>
         </Card>
 
-        <Card variant="surface" style={{ padding: '14px 18px', flex: 1 }}>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-            Assigned Driver
+        <Card
+          variant="surface"
+          style={{
+            padding: '16px 18px',
+            flex: 1,
+            background: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.70rem', color: '#888888', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>
+              Assigned Driver
+            </span>
+            <IconDriver size={15} color="#ededed" />
           </div>
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', marginTop: '2px' }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff', marginTop: '4px', letterSpacing: '-0.01em' }}>
             {activeTrip?.driver?.name || 'Ramesh Kumar'}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-            License: KA-05-2020-0098
+          <div style={{ fontSize: '0.74rem', color: '#888888', marginTop: '2px', fontFamily: 'var(--nb-font-mono)' }}>
+            KA-05-2020-0098
           </div>
         </Card>
       </div>
 
       {/* Interactive Map Canvas */}
-      <Card variant="surface" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
+      <Card
+        variant="surface"
+        style={{
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#0a0a0a',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', margin: 0 }}>
               Greenfield Campus Route Path & Geofenced Stops
             </h3>
-            <p style={{ fontSize: '0.80rem', color: '#94a3b8' }}>
-              Click any stop node along the route to inspect arrival sequence and estimated schedule
+            <p style={{ fontSize: '0.80rem', color: '#888888', marginTop: '2px' }}>
+              Select any stop node along the route path to inspect arrival ETA and sequence
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -234,7 +309,7 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
           </div>
         </div>
 
-        <div style={{ minHeight: '480px', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ minHeight: '480px', borderRadius: '10px', overflow: 'hidden' }}>
           <InteractiveMap
             stops={stops}
             currentLocation={liveLocation}
@@ -249,10 +324,21 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
       </Card>
 
       {/* Stop Progression Schedule Cards */}
-      <Card variant="surface" style={{ padding: '20px' }}>
-        <h3 style={{ fontSize: '1.02rem', fontWeight: 800, color: '#f8fafc', marginBottom: '14px' }}>
-          Route Stop Progression & ETA Forecast
-        </h3>
+      <Card
+        variant="surface"
+        style={{
+          padding: '20px',
+          background: '#0a0a0a',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+          <IconRoute size={16} color="#0070f3" />
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', margin: 0 }}>
+            Route Stop Progression & ETA Forecast
+          </h3>
+        </div>
 
         <div className="nb-stop-cards-row">
           {stops.map((stop, idx) => {
@@ -266,29 +352,31 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
                 onClick={() => setSelectedStopId(stop.id)}
                 style={{
                   padding: '14px',
-                  borderRadius: '10px',
+                  borderRadius: '8px',
                   backgroundColor: isSelected
-                    ? 'rgba(59, 130, 246, 0.15)'
-                    : 'rgba(15, 23, 42, 0.65)',
-                  border: `1.5px solid ${
+                    ? 'rgba(0, 112, 243, 0.12)'
+                    : '#080808',
+                  border: `1px solid ${
                     isSelected
-                      ? 'hsl(217, 91%, 60%)'
+                      ? '#0070f3'
                       : isNext
-                      ? 'rgba(245, 158, 11, 0.4)'
+                      ? 'rgba(245, 166, 35, 0.35)'
                       : 'rgba(255, 255, 255, 0.08)'
                   }`,
                   cursor: 'pointer',
                   minWidth: '180px',
                   flex: 1,
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.15s ease',
+                  boxShadow: isSelected ? '0 0 16px rgba(0, 112, 243, 0.25)' : undefined,
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span
                     style={{
-                      fontSize: '0.74rem',
-                      fontWeight: 800,
-                      color: isNext ? '#fbbf24' : '#38bdf8',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      color: isNext ? '#f5a623' : '#888888',
+                      fontFamily: 'var(--nb-font-mono)',
                     }}
                   >
                     STOP #{idx + 1}
@@ -303,10 +391,11 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
 
                 <div
                   style={{
-                    fontSize: '0.92rem',
-                    fontWeight: 700,
-                    color: '#f8fafc',
+                    fontSize: '0.90rem',
+                    fontWeight: 600,
+                    color: '#ededed',
                     marginTop: '8px',
+                    letterSpacing: '-0.01em',
                   }}
                 >
                   {stop.name}
@@ -314,9 +403,9 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
 
                 <div
                   style={{
-                    fontSize: '0.74rem',
-                    color: 'var(--nb-text-muted, #64748b)',
-                    marginTop: '4px',
+                    fontSize: '0.72rem',
+                    color: '#666666',
+                    marginTop: '3px',
                     fontFamily: 'var(--nb-font-mono)',
                   }}
                 >
@@ -325,9 +414,9 @@ export const LiveBusMonitor: React.FC<LiveBusMonitorProps> = ({
 
                 <div
                   style={{
-                    fontSize: '0.80rem',
-                    fontWeight: 700,
-                    color: isPassed ? '#10b981' : isNext ? '#fbbf24' : '#94a3b8',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: isPassed ? '#00e599' : isNext ? '#f5a623' : '#888888',
                     marginTop: '8px',
                   }}
                 >

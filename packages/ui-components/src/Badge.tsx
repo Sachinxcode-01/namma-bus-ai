@@ -8,7 +8,8 @@ export type BadgeVariant =
   | 'warning'
   | 'danger'
   | 'info'
-  | 'neutral';
+  | 'neutral'
+  | 'vercel';
 
 export interface BadgeProps {
   variant?: BadgeVariant;
@@ -27,54 +28,61 @@ export const Badge: React.FC<BadgeProps> = ({
     switch (variant) {
       case 'active':
         return {
-          bg: 'rgba(16, 185, 129, 0.16)',
-          text: '#34d399',
-          border: 'rgba(52, 211, 153, 0.3)',
-          dot: '#10b981',
+          bg: 'rgba(0, 229, 153, 0.10)',
+          text: '#00e599',
+          border: 'rgba(0, 229, 153, 0.28)',
+          dot: '#00e599',
         };
       case 'warning':
         return {
-          bg: 'rgba(245, 158, 11, 0.16)',
-          text: '#fbbf24',
-          border: 'rgba(251, 191, 36, 0.3)',
-          dot: '#f59e0b',
+          bg: 'rgba(245, 166, 35, 0.10)',
+          text: '#f5a623',
+          border: 'rgba(245, 166, 35, 0.28)',
+          dot: '#f5a623',
         };
       case 'danger':
         return {
-          bg: 'rgba(239, 68, 68, 0.18)',
-          text: '#f87171',
-          border: 'rgba(248, 113, 113, 0.35)',
-          dot: '#ef4444',
+          bg: 'rgba(255, 0, 128, 0.12)',
+          text: '#ff0080',
+          border: 'rgba(255, 0, 128, 0.32)',
+          dot: '#ff0080',
         };
       case 'scheduled':
       case 'info':
         return {
-          bg: 'rgba(59, 130, 246, 0.16)',
-          text: '#60a5fa',
-          border: 'rgba(96, 165, 250, 0.3)',
-          dot: '#3b82f6',
+          bg: 'rgba(0, 112, 243, 0.10)',
+          text: '#0070f3',
+          border: 'rgba(0, 112, 243, 0.28)',
+          dot: '#0070f3',
+        };
+      case 'vercel':
+        return {
+          bg: '#ffffff',
+          text: '#000000',
+          border: '#ffffff',
+          dot: '#000000',
         };
       case 'completed':
         return {
-          bg: 'rgba(148, 163, 184, 0.14)',
-          text: '#cbd5e1',
-          border: 'rgba(203, 213, 225, 0.25)',
-          dot: '#94a3b8',
+          bg: 'rgba(255, 255, 255, 0.06)',
+          text: '#ededed',
+          border: 'rgba(255, 255, 255, 0.14)',
+          dot: '#888888',
         };
       case 'cancelled':
         return {
-          bg: 'rgba(244, 63, 94, 0.14)',
-          text: '#fda4af',
-          border: 'rgba(253, 164, 175, 0.25)',
-          dot: '#f43f5e',
+          bg: 'rgba(255, 0, 128, 0.08)',
+          text: '#ff6699',
+          border: 'rgba(255, 0, 128, 0.20)',
+          dot: '#ff0080',
         };
       case 'neutral':
       default:
         return {
-          bg: 'rgba(255, 255, 255, 0.08)',
-          text: '#94a3b8',
-          border: 'rgba(255, 255, 255, 0.12)',
-          dot: '#64748b',
+          bg: 'rgba(255, 255, 255, 0.05)',
+          text: '#888888',
+          border: 'rgba(255, 255, 255, 0.10)',
+          dot: '#555555',
         };
     }
   };
@@ -88,8 +96,8 @@ export const Badge: React.FC<BadgeProps> = ({
         alignItems: 'center',
         gap: '6px',
         padding: size === 'sm' ? '2px 8px' : '4px 10px',
-        fontSize: size === 'sm' ? '0.70rem' : '0.78rem',
-        fontWeight: 700,
+        fontSize: size === 'sm' ? '0.68rem' : '0.74rem',
+        fontWeight: 600,
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
         borderRadius: '9999px',
@@ -100,36 +108,17 @@ export const Badge: React.FC<BadgeProps> = ({
         lineHeight: 1.2,
       }}
     >
-      {(pulse || variant === 'active') && (
-        <span
-          style={{
-            position: 'relative',
-            display: 'inline-flex',
-            width: '6px',
-            height: '6px',
-          }}
-        >
-          <span
-            style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              borderRadius: '50%',
-              backgroundColor: colors.dot,
-              animation: 'nb-bus-pulse 1.8s infinite cubic-bezier(0, 0, 0.2, 1)',
-            }}
-          />
-          <span
-            style={{
-              position: 'relative',
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: colors.dot,
-            }}
-          />
-        </span>
-      )}
+      <span
+        style={{
+          width: size === 'sm' ? '5px' : '6px',
+          height: size === 'sm' ? '5px' : '6px',
+          borderRadius: '50%',
+          backgroundColor: colors.dot,
+          boxShadow: `0 0 6px ${colors.dot}`,
+          animation: pulse ? 'nb-pulse-glow 1.8s infinite' : 'none',
+          display: 'inline-block',
+        }}
+      />
       {children}
     </span>
   );

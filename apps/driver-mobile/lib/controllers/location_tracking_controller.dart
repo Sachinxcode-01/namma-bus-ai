@@ -38,6 +38,13 @@ class LocationTrackingController extends ChangeNotifier {
   bool get isGpsReady => _status == LocationTrackingStatus.ready;
   bool get hasError => _status.hasError;
   String get statusLabel => _status.displayLabel;
+  bool get isHardwareGpsActive => _locationService.isHardwareGpsActive;
+  bool get useSimulation => _locationService.useSimulation;
+
+  void setUseSimulation(bool value) {
+    _locationService.setUseSimulation(value);
+    notifyListeners();
+  }
 
   Future<bool> checkAndRequestPermissions() async {
     return _locationService.checkAndRequestPermissions();

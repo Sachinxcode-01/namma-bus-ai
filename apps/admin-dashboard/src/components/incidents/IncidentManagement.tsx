@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Input, Modal, Select } from '@nammabus/ui-components';
+import { Card, Badge, Button, Input, Modal, Select, IconIncident, IconAlertCircle, IconCheck, IconPlus } from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import {
@@ -140,12 +140,14 @@ export const IncidentManagement: React.FC<IncidentManagementProps> = ({
         description="Monitor driver distress signals, breakdowns, route anomalies, and emergency SOS"
         badge={
           <Badge variant={criticalOpen.length > 0 ? 'danger' : 'neutral'} size="sm">
+            <IconIncident size={13} style={{ marginRight: 5 }} />
             {incidents.filter((i) => i.status !== IncidentStatus.RESOLVED).length} ACTIVE INCIDENT{incidents.length > 1 ? 'S' : ''}
           </Badge>
         }
         actions={
           <Button variant="danger" size="sm" onClick={() => setIsReportOpen(true)}>
-            + Log Operational Incident
+            <IconPlus size={14} style={{ marginRight: 6 }} />
+            Log Operational Incident
           </Button>
         }
       />
@@ -168,7 +170,7 @@ export const IncidentManagement: React.FC<IncidentManagementProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '2rem', lineHeight: 1 }}>🚨</span>
+            <IconAlertCircle size={28} color="#ff0080" />
             <div>
               <div style={{ fontWeight: 800, color: '#fecaca', fontSize: '1.05rem' }}>
                 ACTIVE EMERGENCY SOS SIGNAL DETECTED
@@ -185,7 +187,7 @@ export const IncidentManagement: React.FC<IncidentManagementProps> = ({
       )}
 
       {/* Filter Bar */}
-      <Card variant="surface" style={{ padding: '16px 20px' }}>
+      <Card variant="surface" style={{ padding: '16px 20px', background: '#0a0a0a', border: '1px solid rgba(255, 255, 255, 0.08)', borderTop: '1px solid rgba(255, 255, 255, 0.16)' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button
             variant={statusFilter === 'ALL' ? 'primary' : 'ghost'}
@@ -218,11 +220,16 @@ export const IncidentManagement: React.FC<IncidentManagementProps> = ({
             style={{
               padding: '40px 20px',
               textAlign: 'center',
-              color: '#34d399',
+              color: '#00e599',
               fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            ✓ No incidents matching selected filter. All operations normal.
+            <IconCheck size={16} color="#00e599" />
+            <span>No incidents matching selected filter. All operations normal.</span>
           </div>
         ) : (
           <div className="nb-table-container">
@@ -263,12 +270,16 @@ export const IncidentManagement: React.FC<IncidentManagementProps> = ({
                       ) : (
                         <span
                           style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
                             fontSize: '0.78rem',
-                            color: '#10b981',
+                            color: '#00e599',
                             fontWeight: 700,
                           }}
                         >
-                          Resolved ✓
+                          <IconCheck size={13} />
+                          Resolved
                         </span>
                       )}
                     </td>

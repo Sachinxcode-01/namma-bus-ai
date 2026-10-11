@@ -25,6 +25,7 @@ class DriverTripController extends ChangeNotifier {
   bool get canStart => status == DriverTripStatus.notStarted && !_isLoading;
   bool get canEnd => status == DriverTripStatus.active && !_isLoading;
   bool get isTripActive => status == DriverTripStatus.active;
+  LocationTrackingController get trackingController => _trackingController;
 
   Future<void> loadAssignedTrip() async {
     _isLoading = true;

@@ -17,10 +17,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <label
             htmlFor={inputId}
             style={{
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              color: 'var(--nb-text-secondary, #94a3b8)',
-              letterSpacing: '0.01em',
+              fontSize: '0.80rem',
+              fontWeight: 500,
+              color: '#888888',
+              letterSpacing: '-0.01em',
             }}
           >
             {label}
@@ -31,8 +31,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <span
               style={{
                 position: 'absolute',
-                left: '14px',
-                color: 'var(--nb-text-muted, #64748b)',
+                left: '12px',
+                color: '#666666',
                 display: 'inline-flex',
                 alignItems: 'center',
                 pointerEvents: 'none',
@@ -47,28 +47,28 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className={`nb-input ${error ? 'nb-input-error' : ''} ${className}`}
             style={{
               width: '100%',
-              minHeight: '44px', // Accessible touch target
-              padding: icon ? '10px 14px 10px 42px' : '10px 14px',
-              backgroundColor: 'rgba(15, 23, 42, 0.65)',
-              border: `1.5px solid ${error ? 'hsl(348, 83%, 55%)' : 'var(--nb-border-subtle, rgba(255, 255, 255, 0.12))'}`,
-              borderRadius: 'var(--nb-radius-md, 10px)',
-              color: 'var(--nb-text-primary, #f8fafc)',
-              fontSize: '0.92rem',
+              minHeight: '40px',
+              padding: icon ? '9px 12px 9px 38px' : '9px 14px',
+              backgroundColor: '#0a0a0a',
+              border: `1px solid ${error ? '#ff0080' : 'rgba(255, 255, 255, 0.12)'}`,
+              borderRadius: '8px',
+              color: '#ededed',
+              fontSize: '0.88rem',
               fontFamily: 'var(--nb-font-sans, inherit)',
               outline: 'none',
               transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-              boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)',
+              boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.6)',
               ...style,
             }}
             {...props}
           />
         </div>
         {error ? (
-          <span style={{ fontSize: '0.78rem', color: '#f87171', fontWeight: 500 }}>
+          <span style={{ fontSize: '0.74rem', color: '#ff0080', fontWeight: 500 }}>
             {error}
           </span>
         ) : helperText ? (
-          <span style={{ fontSize: '0.78rem', color: 'var(--nb-text-muted, #64748b)' }}>
+          <span style={{ fontSize: '0.74rem', color: '#666666' }}>
             {helperText}
           </span>
         ) : null}
@@ -101,47 +101,58 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           <label
             htmlFor={selectId}
             style={{
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              color: 'var(--nb-text-secondary, #94a3b8)',
+              fontSize: '0.80rem',
+              fontWeight: 500,
+              color: '#888888',
+              letterSpacing: '-0.01em',
             }}
           >
             {label}
           </label>
         )}
-        <select
-          id={selectId}
-          ref={ref}
-          className={`nb-select ${error ? 'nb-input-error' : ''} ${className}`}
-          style={{
-            width: '100%',
-            minHeight: '44px',
-            padding: '10px 14px',
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            border: `1.5px solid ${error ? 'hsl(348, 83%, 55%)' : 'var(--nb-border-subtle, rgba(255, 255, 255, 0.12))'}`,
-            borderRadius: 'var(--nb-radius-md, 10px)',
-            color: 'var(--nb-text-primary, #f8fafc)',
-            fontSize: '0.92rem',
-            fontFamily: 'var(--nb-font-sans, inherit)',
-            outline: 'none',
-            cursor: 'pointer',
-            ...style,
-          }}
-          {...props}
-        >
-          {options.map((opt) => (
-            <option
-              key={opt.value}
-              value={opt.value}
-              disabled={opt.disabled}
-              style={{ backgroundColor: '#0f172a', color: '#f8fafc' }}
-            >
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <select
+            id={selectId}
+            ref={ref}
+            className={`nb-select ${error ? 'nb-select-error' : ''} ${className}`}
+            style={{
+              width: '100%',
+              minHeight: '40px',
+              padding: '9px 36px 9px 14px',
+              backgroundColor: '#0a0a0a',
+              border: `1px solid ${error ? '#ff0080' : 'rgba(255, 255, 255, 0.12)'}`,
+              borderRadius: '8px',
+              color: '#ededed',
+              fontSize: '0.88rem',
+              fontFamily: 'var(--nb-font-sans, inherit)',
+              outline: 'none',
+              appearance: 'none',
+              cursor: 'pointer',
+              transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+              ...style,
+            }}
+            {...props}
+          >
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value} disabled={opt.disabled} style={{ background: '#0a0a0a', color: '#ededed' }}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <span
+            style={{
+              position: 'absolute',
+              right: '12px',
+              color: '#888888',
+              pointerEvents: 'none',
+              fontSize: '0.72rem',
+            }}
+          >
+            ▼
+          </span>
+        </div>
         {error && (
-          <span style={{ fontSize: '0.78rem', color: '#f87171', fontWeight: 500 }}>
+          <span style={{ fontSize: '0.74rem', color: '#ff0080', fontWeight: 500 }}>
             {error}
           </span>
         )}

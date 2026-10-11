@@ -1,5 +1,19 @@
 import React from 'react';
-import { Button, Badge } from '@nammabus/ui-components';
+import {
+  Button,
+  Badge,
+  IconOverview,
+  IconRadar,
+  IconBus,
+  IconDriver,
+  IconRoute,
+  IconTrip,
+  IconIncident,
+  IconBroadcast,
+  IconSettings,
+  IconLogOut,
+  IconClose,
+} from '@nammabus/ui-components';
 import { AdminTab } from '../../types';
 import { UserProfile } from '@nammabus/shared-types';
 
@@ -22,21 +36,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
 }) => {
-  const navItems: { id: AdminTab; label: string; icon: string; count?: number }[] = [
-    { id: 'overview', label: 'Fleet Overview', icon: '📊' },
-    { id: 'live', label: 'Live GPS Radar', icon: '📡' },
-    { id: 'buses', label: 'Fleet Buses', icon: '🚌' },
-    { id: 'drivers', label: 'Driver Roster', icon: '🧑‍✈️' },
-    { id: 'routes', label: 'Routes & Stops', icon: '🗺️' },
-    { id: 'trips', label: 'Trip Monitoring', icon: '⏱️' },
+  const navItems: { id: AdminTab; label: string; icon: React.ReactNode; count?: number }[] = [
+    { id: 'overview', label: 'Fleet Overview', icon: <IconOverview size={17} /> },
+    { id: 'live', label: 'Live GPS Radar', icon: <IconRadar size={17} /> },
+    { id: 'buses', label: 'Fleet Buses', icon: <IconBus size={17} /> },
+    { id: 'drivers', label: 'Driver Roster', icon: <IconDriver size={17} /> },
+    { id: 'routes', label: 'Routes & Stops', icon: <IconRoute size={17} /> },
+    { id: 'trips', label: 'Trip Monitoring', icon: <IconTrip size={17} /> },
     {
       id: 'incidents',
       label: 'Incidents & SOS',
-      icon: '🚨',
+      icon: <IconIncident size={17} />,
       count: openIncidentsCount > 0 ? openIncidentsCount : undefined,
     },
-    { id: 'broadcast', label: 'Broadcast Alerts', icon: '📢' },
-    { id: 'settings', label: 'System & Audit', icon: '⚙️' },
+    { id: 'broadcast', label: 'Broadcast Alerts', icon: <IconBroadcast size={17} /> },
+    { id: 'settings', label: 'System & Audit', icon: <IconSettings size={17} /> },
   ];
 
   const handleNavClick = (tab: AdminTab) => {
@@ -60,41 +74,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="nb-sidebar-header">
           <div
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(265, 89%, 66%) 100%)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              background: '#0a0a0a',
+              border: '1px solid rgba(255, 255, 255, 0.16)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.35)',
+              boxShadow: '0 0 16px rgba(0, 112, 243, 0.25)',
               flexShrink: 0,
             }}
           >
-            🚌
+            {/* Vercel Geometric Prism Icon */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 22H22L12 2Z" fill="url(#vercel-grad-sidebar)" />
+              <defs>
+                <linearGradient id="vercel-grad-sidebar" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#ffffff" />
+                  <stop offset="1" stopColor="#888888" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontWeight: 800,
-                fontSize: '1.02rem',
-                color: '#f8fafc',
-                letterSpacing: '-0.01em',
+                fontWeight: 700,
+                fontSize: '0.94rem',
+                color: '#ffffff',
+                letterSpacing: '-0.02em',
               }}
             >
               NammaBus AI
             </div>
             <div
               style={{
-                fontSize: '0.68rem',
-                color: '#38bdf8',
-                fontWeight: 700,
+                fontSize: '0.64rem',
+                color: '#888888',
+                fontWeight: 600,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
               }}
             >
-              College Operations
+              Control Panel
             </div>
           </div>
           <button
@@ -103,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onCloseMobile}
             aria-label="Close navigation"
           >
-            ×
+            <IconClose size={18} />
           </button>
         </div>
 
@@ -135,29 +158,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* User Session Footer */}
         <div className="nb-sidebar-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
             <div
               style={{
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                color: '#60a5fa',
+                backgroundColor: '#171717',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '0.85rem',
+                fontWeight: 600,
+                fontSize: '0.80rem',
+                fontFamily: 'var(--nb-font-mono, monospace)',
               }}
             >
-              A
+              ADM
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div
                 style={{
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  color: '#f8fafc',
+                  fontSize: '0.80rem',
+                  fontWeight: 600,
+                  color: '#ededed',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -165,19 +190,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 {user?.email || 'admin@nammabus.ai'}
               </div>
-              <div style={{ fontSize: '0.70rem', color: '#10b981', fontWeight: 600 }}>
-                ● Authorized Admin
+              <div style={{ fontSize: '0.68rem', color: '#00e599', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#00e599', display: 'inline-block' }} />
+                Root Authority
               </div>
             </div>
           </div>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             fullWidth
+            icon={<IconLogOut size={13} />}
             onClick={onLogout}
-            style={{ fontSize: '0.80rem' }}
           >
-            Log Out Session
+            Sign Out
           </Button>
         </div>
       </aside>

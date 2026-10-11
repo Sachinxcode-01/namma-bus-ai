@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button } from '@nammabus/ui-components';
+import { Modal, Button, IconAlertCircle } from '@nammabus/ui-components';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -67,26 +67,36 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     >
       <div
         style={{
-          padding: '14px',
-          borderRadius: '10px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start',
+          padding: '14px 16px',
+          borderRadius: '8px',
           backgroundColor:
             variant === 'danger'
-              ? 'rgba(239, 68, 68, 0.1)'
-              : 'rgba(245, 158, 11, 0.1)',
+              ? 'rgba(239, 68, 68, 0.08)'
+              : 'rgba(245, 166, 35, 0.08)',
           border: `1px solid ${
             variant === 'danger'
               ? 'rgba(239, 68, 68, 0.25)'
-              : 'rgba(245, 158, 11, 0.25)'
+              : 'rgba(245, 166, 35, 0.25)'
           }`,
-          color: 'var(--nb-text-secondary, #94a3b8)',
+          color: '#888888',
           fontSize: '0.86rem',
           lineHeight: '1.5',
         }}
       >
-        <strong style={{ color: '#f8fafc', display: 'block', marginBottom: '4px' }}>
-          Notice: Destructive / Critical Operation
-        </strong>
-        Please review carefully. This will update live transport state across driver and student apps immediately.
+        <IconAlertCircle
+          size={18}
+          color={variant === 'danger' ? '#f87171' : '#f5a623'}
+          style={{ marginTop: '2px', flexShrink: 0 }}
+        />
+        <div>
+          <strong style={{ color: '#ededed', display: 'block', marginBottom: '2px' }}>
+            Notice: Critical Operation
+          </strong>
+          Please review carefully. This will update live transport state across driver and student apps immediately.
+        </div>
       </div>
     </Modal>
   );

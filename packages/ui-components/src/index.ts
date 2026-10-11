@@ -9,3 +9,4 @@ export * from './EtaTicker';
 export * from './StatusIndicator';
 export * from './Modal';
 export * from './EmptyState';
+export * from './icons';

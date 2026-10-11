@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Input, Select } from '@nammabus/ui-components';
+import { Card, Badge, Button, Input, Select, IconBroadcast, IconSend, IconCheck, IconZap } from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { NotificationEntity, NotificationType } from '@nammabus/shared-types';
@@ -77,6 +77,7 @@ export const BroadcastCenter: React.FC<BroadcastCenterProps> = ({
         description="Dispatch real-time push announcements, delay alerts, and safety notices to student and driver apps"
         badge={
           <Badge variant="active" size="sm">
+            <IconBroadcast size={13} style={{ marginRight: 5 }} />
             FCM MULTICAST READY
           </Badge>
         }
@@ -84,12 +85,13 @@ export const BroadcastCenter: React.FC<BroadcastCenterProps> = ({
 
       <div className="nb-broadcast-grid">
         {/* Broadcast Dispatch Form */}
-        <Card variant="surface" style={{ padding: '24px' }}>
+        <Card variant="surface" style={{ padding: '24px', background: '#0a0a0a', border: '1px solid rgba(255, 255, 255, 0.08)', borderTop: '1px solid rgba(255, 255, 255, 0.16)' }}>
           <div style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <IconBroadcast size={18} color="#0070f3" />
               Dispatch Operational Notification
             </h3>
-            <p style={{ fontSize: '0.80rem', color: '#94a3b8', marginTop: '2px' }}>
+            <p style={{ fontSize: '0.80rem', color: '#888888', marginTop: '2px' }}>
               Requires explicit confirmation before delivery to prevent accidental notification spam.
             </p>
           </div>
@@ -139,13 +141,14 @@ export const BroadcastCenter: React.FC<BroadcastCenterProps> = ({
                 style={{
                   width: '100%',
                   padding: '12px 14px',
-                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
-                  border: '1.5px solid var(--nb-border-subtle, rgba(255, 255, 255, 0.12))',
-                  borderRadius: '10px',
-                  color: '#f8fafc',
+                  backgroundColor: '#0a0a0a',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  color: '#ededed',
                   fontSize: '0.90rem',
                   fontFamily: 'inherit',
                   outline: 'none',
+                  transition: 'border-color 0.15s ease',
                 }}
               />
             </div>
@@ -157,18 +160,20 @@ export const BroadcastCenter: React.FC<BroadcastCenterProps> = ({
               fullWidth
               style={{ marginTop: '8px' }}
             >
-              📢 Review & Broadcast Alert
+              <IconSend size={15} style={{ marginRight: 6 }} />
+              Review & Broadcast Alert
             </Button>
           </form>
         </Card>
 
         {/* Broadcast History Log */}
-        <Card variant="surface" style={{ padding: '24px' }}>
+        <Card variant="surface" style={{ padding: '24px', background: '#0a0a0a', border: '1px solid rgba(255, 255, 255, 0.08)', borderTop: '1px solid rgba(255, 255, 255, 0.16)' }}>
           <div style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <IconZap size={18} color="#f5a623" />
               Recent Notification Dispatch Log
             </h3>
-            <p style={{ fontSize: '0.80rem', color: '#94a3b8', marginTop: '2px' }}>
+            <p style={{ fontSize: '0.80rem', color: '#888888', marginTop: '2px' }}>
               Audit trail of dispatched campus transportation communications
             </p>
           </div>
@@ -179,8 +184,8 @@ export const BroadcastCenter: React.FC<BroadcastCenterProps> = ({
                 key={notif.id}
                 style={{
                   padding: '14px 16px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                  borderRadius: '8px',
+                  backgroundColor: '#050505',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                 }}
               >
@@ -200,8 +205,9 @@ export const BroadcastCenter: React.FC<BroadcastCenterProps> = ({
                   {notif.body}
                 </p>
 
-                <div style={{ marginTop: '8px', fontSize: '0.72rem', color: '#10b981', fontWeight: 600 }}>
-                  ✓ Delivered to student mobile push subscribers
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: '8px', fontSize: '0.72rem', color: '#00e599', fontWeight: 600 }}>
+                  <IconCheck size={13} />
+                  Delivered to student mobile push subscribers
                 </div>
               </div>
             ))}

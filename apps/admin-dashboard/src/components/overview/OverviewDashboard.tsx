@@ -1,8 +1,18 @@
 import React from 'react';
-import { Card, Badge, Button } from '@nammabus/ui-components';
+import {
+  Card,
+  Badge,
+  Button,
+  InteractiveMap,
+  IconBus,
+  IconTrip,
+  IconDriver,
+  IconIncident,
+  IconBroadcast,
+  IconRadar,
+} from '@nammabus/ui-components';
 import { MetricCard } from '../common/MetricCard';
 import { PageHeader } from '../common/PageHeader';
-import { InteractiveMap } from '@nammabus/ui-components';
 import {
   BusEntity,
   TripEntity,
@@ -83,16 +93,18 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             <Button
               variant="secondary"
               size="sm"
+              icon={<IconBroadcast size={15} />}
               onClick={() => onNavigateTab('broadcast')}
             >
-              📢 Dispatch Alert
+              Dispatch Alert
             </Button>
             <Button
               variant="primary"
               size="sm"
+              icon={<IconRadar size={15} />}
               onClick={() => onNavigateTab('live')}
             >
-              📡 Open Live Radar
+              Open Live Radar
             </Button>
           </>
         }
@@ -116,7 +128,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>🚨</span>
+            <IconIncident size={24} color="#ff0080" />
             <div>
               <div style={{ fontWeight: 800, color: '#fecaca', fontSize: '0.98rem' }}>
                 URGENT: {metrics.criticalIncidentsCount} Critical Emergency / SOS Incident Reported
@@ -143,7 +155,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           value={`${metrics.activeBusesCount} / ${metrics.totalBusesCount}`}
           subtext="100% active telemetry pinging"
           subtextStatus="positive"
-          icon="🚌"
+          icon={<IconBus size={20} color="#0070f3" />}
           glow="primary"
           onClick={() => onNavigateTab('buses')}
         />
@@ -153,7 +165,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           value={metrics.activeTripsCount}
           subtext={activeTrips.length > 0 ? 'Greenfield Express in transit' : 'No active trips'}
           subtextStatus={activeTrips.length > 0 ? 'positive' : 'neutral'}
-          icon="⏱️"
+          icon={<IconTrip size={20} color="#f5a623" />}
           glow="amber"
           onClick={() => onNavigateTab('trips')}
         />
@@ -163,7 +175,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           value={`${metrics.onDutyDriversCount} / ${metrics.totalDriversCount}`}
           subtext="Assigned & authenticated"
           subtextStatus="positive"
-          icon="🧑‍✈️"
+          icon={<IconDriver size={20} color="#00e599" />}
           glow="emerald"
           onClick={() => onNavigateTab('drivers')}
         />
@@ -177,7 +189,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
               : 'All transit routes normal'
           }
           subtextStatus={metrics.openIncidentsCount > 0 ? 'negative' : 'positive'}
-          icon="⚠️"
+          icon={<IconIncident size={20} color="#ff0080" />}
           glow={metrics.openIncidentsCount > 0 ? 'rose' : 'none'}
           onClick={() => onNavigateTab('incidents')}
         />

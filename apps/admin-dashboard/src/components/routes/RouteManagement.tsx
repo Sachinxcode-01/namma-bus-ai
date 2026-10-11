@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Input, Modal } from '@nammabus/ui-components';
+import { Card, Badge, Button, Input, Modal, IconRoute, IconMapPin, IconPlus, IconAlertCircle, IconBus, IconActivity } from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
 import { RouteEntity, StopEntity } from '@nammabus/shared-types';
 
@@ -132,16 +132,19 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
         description="Configure college transit corridors, stop ordering, and GPS arrival geofences"
         badge={
           <Badge variant="active" size="sm">
+            <IconRoute size={13} style={{ marginRight: 5 }} />
             {routes.length} ROUTE{routes.length > 1 ? 'S' : ''} • {stops.length} STOPS
           </Badge>
         }
         actions={
           <div style={{ display: 'flex', gap: '10px' }}>
             <Button variant="secondary" size="sm" onClick={() => setIsAddStopOpen(true)}>
-              + Add Boarding Stop
+              <IconMapPin size={14} style={{ marginRight: 6 }} />
+              Add Boarding Stop
             </Button>
             <Button variant="primary" size="sm" onClick={() => setIsAddRouteOpen(true)}>
-              + Create New Route
+              <IconPlus size={14} style={{ marginRight: 6 }} />
+              Create New Route
             </Button>
           </div>
         }
@@ -149,17 +152,18 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
 
       {/* Visual Workflow: Route -> Stops -> Bus -> Trip */}
       <Card variant="surface" style={{ padding: '18px 24px' }}>
-        <div style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800 }}>
+        <div style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>
           Transport Architecture Relationship Model
         </div>
         <div className="nb-flow-steps">
           <div className="nb-flow-step">
             <span className="nb-step-badge">1</span>
             <div>
-              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem' }}>
+              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <IconRoute size={15} color="#0070f3" />
                 Route Corridor
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 2 }}>
                 {activeRoute.code} ({activeRoute.name})
               </div>
             </div>
@@ -170,10 +174,11 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
           <div className="nb-flow-step">
             <span className="nb-step-badge">2</span>
             <div>
-              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem' }}>
+              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <IconMapPin size={15} color="#38bdf8" />
                 Sequential Stops
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#38bdf8' }}>
+              <div style={{ fontSize: '0.78rem', color: '#38bdf8', marginTop: 2 }}>
                 {stops.length} Geofenced Waypoints
               </div>
             </div>
@@ -184,10 +189,11 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
           <div className="nb-flow-step">
             <span className="nb-step-badge">3</span>
             <div>
-              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem' }}>
+              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <IconBus size={15} color="#fbbf24" />
                 Assigned Bus
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#fbbf24' }}>
+              <div style={{ fontSize: '0.78rem', color: '#fbbf24', marginTop: 2 }}>
                 NB-01 (54 Passenger Seats)
               </div>
             </div>
@@ -198,10 +204,11 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
           <div className="nb-flow-step">
             <span className="nb-step-badge">4</span>
             <div>
-              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem' }}>
+              <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <IconActivity size={15} color="#10b981" />
                 Live Transit Trip
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#10b981' }}>
+              <div style={{ fontSize: '0.78rem', color: '#10b981', marginTop: 2 }}>
                 Active Driver Telemetry
               </div>
             </div>
@@ -302,14 +309,19 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
             <div
               role="alert"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 padding: '10px 12px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderRadius: '8px',
                 color: '#fca5a5',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
               }}
             >
-              ⚠️ {formError}
+              <IconAlertCircle size={15} color="#fca5a5" />
+              <span>{formError}</span>
             </div>
           )}
 
@@ -359,14 +371,19 @@ export const RouteManagement: React.FC<RouteManagementProps> = ({
             <div
               role="alert"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 padding: '10px 12px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderRadius: '8px',
                 color: '#fca5a5',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
               }}
             >
-              ⚠️ {formError}
+              <IconAlertCircle size={15} color="#fca5a5" />
+              <span>{formError}</span>
             </div>
           )}
 

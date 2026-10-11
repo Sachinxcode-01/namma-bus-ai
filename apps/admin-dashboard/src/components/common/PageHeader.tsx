@@ -18,20 +18,22 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       style={{
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         flexWrap: 'wrap',
         gap: '16px',
-        marginBottom: '4px',
+        paddingBottom: '16px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        marginBottom: '6px',
       }}
     >
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1
             style={{
-              fontSize: '1.45rem',
-              fontWeight: 800,
-              color: '#f8fafc',
-              letterSpacing: '-0.01em',
+              fontSize: '1.35rem',
+              fontWeight: 700,
+              color: '#ffffff',
+              letterSpacing: '-0.025em',
             }}
           >
             {title}
@@ -40,9 +42,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         </div>
         <p
           style={{
-            fontSize: '0.84rem',
-            color: 'var(--nb-text-secondary, #94a3b8)',
-            marginTop: '4px',
+            fontSize: '0.82rem',
+            color: '#888888',
+            marginTop: '3px',
+            letterSpacing: '-0.01em',
           }}
         >
           {description}
@@ -50,7 +53,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       </div>
 
       {actions && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {actions}
         </div>
       )}

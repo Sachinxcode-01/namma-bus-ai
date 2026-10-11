@@ -42,7 +42,7 @@ export function useAdminAuth() {
       }
 
       const res = await api.auth.login({ email: trimmedEmail, password });
-      
+
       // Strict role check: Only ADMIN role is authorized
       if (res.user.role !== UserRole.ADMIN) {
         setUser(res.user);

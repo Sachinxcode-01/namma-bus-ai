@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'amber' | 'danger' | 'ghost' | 'outline';
+export type ButtonVariant = 'primary' | 'secondary' | 'amber' | 'danger' | 'ghost' | 'outline' | 'electric';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -27,43 +27,57 @@ export const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'primary':
         return {
-          background: 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(224, 76%, 48%) 100%)',
+          background: '#ffffff',
+          color: '#000000',
+          border: '1px solid rgba(255, 255, 255, 0.95)',
+          boxShadow: '0 0 16px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1)',
+          fontWeight: 600,
+        };
+      case 'electric':
+        return {
+          background: 'linear-gradient(135deg, #0070f3 0%, #7928ca 100%)',
           color: '#ffffff',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 4px 16px rgba(0, 112, 243, 0.35)',
+          fontWeight: 600,
         };
       case 'amber':
         return {
-          background: 'linear-gradient(135deg, hsl(38, 96%, 53%) 0%, hsl(34, 93%, 45%) 100%)',
-          color: '#1a1003',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 4px 14px 0 rgba(245, 158, 11, 0.35)',
-          fontWeight: 700,
+          background: 'rgba(245, 166, 35, 0.12)',
+          color: '#f5a623',
+          border: '1px solid rgba(245, 166, 35, 0.35)',
+          boxShadow: '0 0 14px rgba(245, 166, 35, 0.2)',
+          fontWeight: 600,
         };
       case 'danger':
         return {
-          background: 'linear-gradient(135deg, hsl(348, 83%, 58%) 0%, hsl(348, 83%, 45%) 100%)',
-          color: '#ffffff',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          boxShadow: '0 4px 14px 0 rgba(239, 68, 68, 0.35)',
+          background: 'rgba(255, 0, 128, 0.12)',
+          color: '#ff0080',
+          border: '1px solid rgba(255, 0, 128, 0.35)',
+          boxShadow: '0 0 14px rgba(255, 0, 128, 0.2)',
+          fontWeight: 600,
         };
       case 'secondary':
         return {
-          background: 'var(--nb-bg-surface-elevated, #243048)',
-          color: 'var(--nb-text-primary, #f8fafc)',
-          border: '1px solid var(--nb-border-medium, rgba(255, 255, 255, 0.14))',
+          background: '#111111',
+          color: '#ededed',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.5)',
+          fontWeight: 500,
         };
       case 'outline':
         return {
           background: 'transparent',
-          color: 'var(--nb-text-primary, #f8fafc)',
-          border: '1.5px solid var(--nb-border-medium, rgba(255, 255, 255, 0.2))',
+          color: '#ededed',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          fontWeight: 500,
         };
       case 'ghost':
         return {
           background: 'transparent',
-          color: 'var(--nb-text-secondary, #94a3b8)',
-          border: 'none',
+          color: '#888888',
+          border: '1px solid transparent',
+          fontWeight: 500,
         };
       default:
         return {};
@@ -75,24 +89,27 @@ export const Button: React.FC<ButtonProps> = ({
       case 'sm':
         return {
           padding: '6px 12px',
-          fontSize: '0.8125rem',
-          minHeight: '36px',
+          fontSize: '0.80rem',
+          minHeight: '34px',
           borderRadius: 'var(--nb-radius-sm, 6px)',
+          letterSpacing: '-0.01em',
         };
       case 'lg':
         return {
-          padding: '14px 24px',
-          fontSize: '1rem',
-          minHeight: '52px',
-          borderRadius: 'var(--nb-radius-md, 12px)',
+          padding: '12px 22px',
+          fontSize: '0.96rem',
+          minHeight: '48px',
+          borderRadius: 'var(--nb-radius-md, 8px)',
+          letterSpacing: '-0.01em',
         };
       case 'md':
       default:
         return {
-          padding: '10px 18px',
-          fontSize: '0.90rem',
-          minHeight: '44px', // Minimum accessible touch target
-          borderRadius: 'var(--nb-radius-md, 10px)',
+          padding: '8px 16px',
+          fontSize: '0.86rem',
+          minHeight: '40px',
+          borderRadius: 'var(--nb-radius-md, 8px)',
+          letterSpacing: '-0.01em',
         };
     }
   };
@@ -107,10 +124,9 @@ export const Button: React.FC<ButtonProps> = ({
         justifyContent: 'center',
         gap: '8px',
         fontFamily: 'var(--nb-font-sans, inherit)',
-        fontWeight: 600,
         cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        transition: 'transform var(--nb-duration-fast, 150ms) ease, box-shadow var(--nb-duration-fast, 150ms) ease, background var(--nb-duration-fast, 150ms) ease',
+        opacity: disabled ? 0.45 : 1,
+        transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
         width: fullWidth ? '100%' : 'auto',
         outline: 'none',
         userSelect: 'none',
@@ -123,10 +139,10 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <span
           style={{
-            width: '16px',
-            height: '16px',
-            border: '2px solid rgba(255, 255, 255, 0.3)',
-            borderTopColor: '#ffffff',
+            width: '14px',
+            height: '14px',
+            border: '2px solid rgba(255, 255, 255, 0.25)',
+            borderTopColor: variant === 'primary' ? '#000000' : '#ffffff',
             borderRadius: '50%',
             display: 'inline-block',
             animation: 'nb-spin 0.6s linear infinite',

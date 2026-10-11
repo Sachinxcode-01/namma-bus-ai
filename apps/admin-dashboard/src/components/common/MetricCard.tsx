@@ -6,8 +6,8 @@ interface MetricCardProps {
   value: string | number;
   subtext?: string;
   subtextStatus?: 'positive' | 'warning' | 'negative' | 'neutral';
-  icon?: string;
-  glow?: 'primary' | 'amber' | 'emerald' | 'rose' | 'none';
+  icon?: React.ReactNode;
+  glow?: 'primary' | 'amber' | 'emerald' | 'rose' | 'electric' | 'none';
   onClick?: () => void;
 }
 
@@ -23,13 +23,13 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   const getSubtextColor = () => {
     switch (subtextStatus) {
       case 'positive':
-        return '#34d399';
+        return '#00e599';
       case 'warning':
-        return '#fbbf24';
+        return '#f5a623';
       case 'negative':
-        return '#f87171';
+        return '#ff0080';
       default:
-        return 'var(--nb-text-muted, #64748b)';
+        return '#888888';
     }
   };
 
@@ -37,21 +37,25 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <Card
       variant="glass"
       glow={glow}
+      interactive={!!onClick}
       style={{
         padding: '20px',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease',
+        background: '#0a0a0a',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
       }}
       onClick={onClick}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span
           style={{
-            fontSize: '0.74rem',
-            fontWeight: 700,
+            fontSize: '0.72rem',
+            fontWeight: 600,
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
-            color: 'var(--nb-text-secondary, #94a3b8)',
+            color: '#888888',
           }}
         >
           {label}
@@ -59,9 +63,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         {icon && (
           <span
             style={{
-              fontSize: '1.25rem',
+              fontSize: '1.15rem',
               lineHeight: 1,
-              opacity: 0.85,
+              opacity: 0.9,
             }}
           >
             {icon}
@@ -72,11 +76,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <div
         style={{
           fontSize: '2.1rem',
-          fontWeight: 900,
-          color: '#f8fafc',
-          marginTop: '6px',
-          letterSpacing: '-0.02em',
-          fontFamily: 'var(--nb-font-sans)',
+          fontWeight: 700,
+          color: '#ffffff',
+          marginTop: '8px',
+          letterSpacing: '-0.03em',
+          fontFamily: 'var(--nb-font-mono, monospace)',
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {value}
@@ -85,15 +90,24 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {subtext && (
         <div
           style={{
-            fontSize: '0.78rem',
-            fontWeight: 600,
+            fontSize: '0.76rem',
+            fontWeight: 500,
             color: getSubtextColor(),
-            marginTop: '4px',
+            marginTop: '6px',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '6px',
           }}
         >
+          <span
+            style={{
+              width: '4px',
+              height: '4px',
+              borderRadius: '50%',
+              backgroundColor: getSubtextColor(),
+              display: 'inline-block',
+            }}
+          />
           {subtext}
         </div>
       )}

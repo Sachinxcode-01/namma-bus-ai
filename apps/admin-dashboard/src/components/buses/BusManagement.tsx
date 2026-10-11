@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Input, Modal } from '@nammabus/ui-components';
+import { Card, Badge, Button, Input, Modal, IconBus, IconSearch, IconPlus, IconAlertCircle, IconEdit, IconTrash } from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { BusEntity } from '@nammabus/shared-types';
@@ -150,21 +150,24 @@ export const BusManagement: React.FC<BusManagementProps> = ({
         description="Register, inspect, and manage college transport vehicles and operational readiness"
         badge={
           <Badge variant="neutral" size="sm">
+            <IconBus size={13} style={{ marginRight: 5 }} />
             {buses.length} TOTAL BUSES
           </Badge>
         }
         actions={
           <Button variant="primary" size="sm" onClick={handleOpenAdd}>
-            + Add New Bus
+            <IconPlus size={14} style={{ marginRight: 6 }} />
+            Add New Bus
           </Button>
         }
       />
 
       {/* Filter and Search Bar */}
-      <Card variant="surface" style={{ padding: '16px 20px' }}>
+      <Card variant="surface" style={{ padding: '16px 20px', background: '#0a0a0a', border: '1px solid rgba(255, 255, 255, 0.08)', borderTop: '1px solid rgba(255, 255, 255, 0.16)' }}>
         <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: '220px' }}>
             <Input
+              icon={<IconSearch size={14} color="#666666" />}
               placeholder="Search by bus number or registration plate..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -264,6 +267,7 @@ export const BusManagement: React.FC<BusManagementProps> = ({
                           size="sm"
                           onClick={() => handleOpenEdit(bus)}
                         >
+                          <IconEdit size={13} style={{ marginRight: 4 }} />
                           Edit
                         </Button>
                         <Button
@@ -282,6 +286,7 @@ export const BusManagement: React.FC<BusManagementProps> = ({
                           onClick={() => setDeletingBusId(bus.id)}
                           style={{ color: 'var(--nb-text-muted, #64748b)' }}
                         >
+                          <IconTrash size={13} style={{ marginRight: 4 }} />
                           Delete
                         </Button>
                       </div>
@@ -306,14 +311,19 @@ export const BusManagement: React.FC<BusManagementProps> = ({
             <div
               role="alert"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 padding: '10px 12px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderRadius: '8px',
                 color: '#fca5a5',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
               }}
             >
-              ⚠️ {formError}
+              <IconAlertCircle size={15} color="#fca5a5" />
+              <span>{formError}</span>
             </div>
           )}
 
@@ -370,14 +380,19 @@ export const BusManagement: React.FC<BusManagementProps> = ({
             <div
               role="alert"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 padding: '10px 12px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderRadius: '8px',
                 color: '#fca5a5',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
               }}
             >
-              ⚠️ {formError}
+              <IconAlertCircle size={15} color="#fca5a5" />
+              <span>{formError}</span>
             </div>
           )}
 

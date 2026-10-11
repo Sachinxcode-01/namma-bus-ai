@@ -206,19 +206,24 @@ class DriverHomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 1. Status Bar (Trip Status + GPS Status)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      TripStatusBadge(status: status),
-                      GpsStatusBadge(
-                        status: isTripActive
-                            ? LocationTrackingStatus.tracking
-                            : LocationTrackingStatus.ready,
-                      ),
-                    ],
+                  ListenableBuilder(
+                    listenable: tripController.trackingController,
+                    builder: (context, _) => Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        TripStatusBadge(status: status),
+                        GpsStatusBadge(
+                          status: isTripActive
+                              ? tripController.trackingController.status
+                              : (tripController.trackingController.isGpsReady
+                                  ? LocationTrackingStatus.ready
+                                  : tripController.trackingController.status),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -243,9 +248,7 @@ class DriverHomeScreen extends StatelessWidget {
 
                   // 3. Live Telemetry Box (Speedometer, Accuracy, Coordinates)
                   GpsTelemetryWidget(
-                    telemetryNotifier: tripController.canEnd
-                        ? ValueNotifier(null) // isolated updates
-                        : ValueNotifier(null),
+                    telemetryNotifier: tripController.trackingController.telemetryNotifier,
                     isTracking: isTripActive,
                   ),
                   const SizedBox(height: 16),

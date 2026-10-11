@@ -32,7 +32,7 @@ void main() {
     apiClient = ApiClient();
     authRepo = DriverAuthRepository(client: apiClient);
     tripRepo = DriverTripRepository(client: apiClient);
-    locationService = LocationTrackingService(client: apiClient);
+    locationService = LocationTrackingService(client: apiClient, useSimulation: true);
 
     authController = DriverAuthController(authRepo: authRepo);
     trackingController = LocationTrackingController(locationService: locationService);

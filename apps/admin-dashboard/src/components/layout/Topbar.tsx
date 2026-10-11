@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Badge } from '@nammabus/ui-components';
+import { Badge, IconSearch, IconIncident } from '@nammabus/ui-components';
 import { AdminTab } from '../../types';
 
 interface TopbarProps {
@@ -37,25 +37,25 @@ export const Topbar: React.FC<TopbarProps> = ({
   const getTabTitle = (tab: AdminTab) => {
     switch (tab) {
       case 'overview':
-        return 'Campus Transport Operations';
+        return 'Operations Overview';
       case 'live':
-        return 'Live GPS Fleet Radar';
+        return 'Live GPS Radar';
       case 'buses':
-        return 'Bus Fleet Registry';
+        return 'Fleet Bus Registry';
       case 'drivers':
-        return 'Authorized Driver Roster';
+        return 'Driver Roster';
       case 'routes':
-        return 'Route & Stop Manager';
+        return 'Route & Geofences';
       case 'trips':
-        return 'Trip Schedule & Performance';
+        return 'Trip Monitor & ETA';
       case 'incidents':
-        return 'Incident & Safety Response Desk';
+        return 'Emergency & SOS Desk';
       case 'broadcast':
-        return 'Campus Alert Broadcast Center';
+        return 'Broadcast Alerts';
       case 'settings':
-        return 'System Diagnostics & Audit';
+        return 'System Diagnostics';
       default:
-        return 'Transport Control';
+        return 'Control Center';
     }
   };
 
@@ -68,61 +68,91 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={onOpenMobileMenu}
           aria-label="Open navigation menu"
         >
-          ☰
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="18" x2="20" y2="18" />
+          </svg>
         </button>
 
-        <div>
+        {/* Vercel-Style Breadcrumbs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.82rem', color: '#666666', fontWeight: 500 }}>NammaBus</span>
+          <span style={{ fontSize: '0.75rem', color: '#333333' }}>/</span>
           <h2
             style={{
-              fontSize: '1.2rem',
-              fontWeight: 800,
-              color: '#f8fafc',
-              letterSpacing: '-0.01em',
+              fontSize: '0.94rem',
+              fontWeight: 600,
+              color: '#ffffff',
+              letterSpacing: '-0.015em',
               margin: 0,
             }}
           >
             {getTabTitle(currentTab)}
           </h2>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
-            Control Center • College Transport Authority
-          </div>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '2px 6px',
+              fontSize: '0.64rem',
+              fontWeight: 600,
+              borderRadius: '4px',
+              background: '#141414',
+              color: '#888888',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              fontFamily: 'var(--nb-font-mono, monospace)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            PROD
+          </span>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Quick Search Trigger */}
+        <div className="nb-topbar-search" onClick={() => onSelectTab('overview')} title="Quick Navigate">
+          <IconSearch size={14} color="#888888" />
+          <span>Quick actions</span>
+          <span className="nb-topbar-kbd">⌘K</span>
+        </div>
+
         {openIncidentsCount > 0 && (
           <button
             type="button"
             onClick={() => onSelectTab('incidents')}
             style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#f87171',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
+              background: 'rgba(255, 0, 128, 0.12)',
+              border: '1px solid rgba(255, 0, 128, 0.35)',
+              color: '#ff0080',
+              padding: '5px 10px',
+              borderRadius: '6px',
+              fontSize: '0.74rem',
+              fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              transition: 'all 0.15s ease',
             }}
           >
-            <span style={{ fontSize: '0.9rem' }}>🚨</span>
-            <span>{openIncidentsCount} Open Incident{openIncidentsCount > 1 ? 's' : ''}</span>
+            <IconIncident size={14} color="#ff0080" />
+            <span>{openIncidentsCount} Incident{openIncidentsCount > 1 ? 's' : ''}</span>
           </button>
         )}
 
+        {/* Live Clock Strip */}
         <div className="nb-topbar-clock" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Badge variant="active" size="sm" pulse>
-            LIVE
+            TELEMETRY LIVE
           </Badge>
           <span
             style={{
               fontFamily: 'var(--nb-font-mono, monospace)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              color: '#cbd5e1',
+              fontSize: '0.78rem',
+              fontWeight: 500,
+              color: '#ededed',
             }}
           >
             {timeStr}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Badge, Button, Input, Modal, Select } from '@nammabus/ui-components';
+import { Card, Badge, Button, Input, Modal, Select, IconDriver, IconPlus, IconSearch, IconAlertCircle, IconPhone, IconBus } from '@nammabus/ui-components';
 import { PageHeader } from '../common/PageHeader';
 import { ExtendedDriverProfile, DriverDutyStatus } from '../../types';
 
@@ -146,12 +146,14 @@ export const DriverManagement: React.FC<DriverManagementProps> = ({
         description="Monitor staff duty allocations, commercial licenses, and assigned fleet vehicles"
         badge={
           <Badge variant="neutral" size="sm">
+            <IconDriver size={13} style={{ marginRight: 5 }} />
             {drivers.length} ENROLLED DRIVERS
           </Badge>
         }
         actions={
           <Button variant="primary" size="sm" onClick={handleOpenAdd}>
-            + Enroll New Driver
+            <IconPlus size={14} style={{ marginRight: 6 }} />
+            Enroll New Driver
           </Button>
         }
       />
@@ -159,7 +161,7 @@ export const DriverManagement: React.FC<DriverManagementProps> = ({
       {/* Filter and Search */}
       <Card variant="surface" style={{ padding: '16px 20px' }}>
         <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 1, minWidth: '220px' }}>
+          <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
             <Input
               placeholder="Search by driver name, license, or mobile..."
               value={searchQuery}
@@ -282,14 +284,19 @@ export const DriverManagement: React.FC<DriverManagementProps> = ({
             <div
               role="alert"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 padding: '10px 12px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderRadius: '8px',
                 color: '#fca5a5',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
               }}
             >
-              ⚠️ {formError}
+              <IconAlertCircle size={15} color="#fca5a5" />
+              <span>{formError}</span>
             </div>
           )}
 
@@ -351,14 +358,19 @@ export const DriverManagement: React.FC<DriverManagementProps> = ({
             <div
               role="alert"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 padding: '10px 12px',
                 backgroundColor: 'rgba(239, 68, 68, 0.12)',
                 borderRadius: '8px',
                 color: '#fca5a5',
                 fontSize: '0.82rem',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
               }}
             >
-              ⚠️ {formError}
+              <IconAlertCircle size={15} color="#fca5a5" />
+              <span>{formError}</span>
             </div>
           )}
 
@@ -438,26 +450,30 @@ export const DriverManagement: React.FC<DriverManagementProps> = ({
             >
               <div>
                 <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Driver Name</span>
-                <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '1.05rem' }}>
+                <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <IconDriver size={16} color="#0070f3" />
                   {viewingDriver.name}
                 </div>
               </div>
 
               <div>
                 <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>License</span>
-                <div style={{ fontFamily: 'var(--nb-font-mono)', fontWeight: 700 }}>
+                <div style={{ fontFamily: 'var(--nb-font-mono)', fontWeight: 700, marginTop: 4 }}>
                   {viewingDriver.licenseNumber}
                 </div>
               </div>
 
               <div>
                 <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Phone Number</span>
-                <div style={{ fontWeight: 700, color: '#38bdf8' }}>{viewingDriver.phone}</div>
+                <div style={{ fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <IconPhone size={14} />
+                  {viewingDriver.phone}
+                </div>
               </div>
 
               <div>
                 <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Duty Status</span>
-                <div>{getStatusBadge(viewingDriver.status)}</div>
+                <div style={{ marginTop: 4 }}>{getStatusBadge(viewingDriver.status)}</div>
               </div>
             </div>
 
